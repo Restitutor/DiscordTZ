@@ -31,7 +31,7 @@ class DecisionActionRow(discord.ui.View):
 
     @discord.ui.button(label="Accept!", style=discord.ButtonStyle.green, custom_id="ACCEPT")
     async def acceptHandler(this, button: discord.ui.Button, ctx: discord.Interaction):
-        if (ctx.user.id != this.client.ownerId):
+        if ctx.user.id != this.client.ownerId:
             await ctx.response.send_message("You can't do that! You aren't my owner!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to reject a request!")
             return
