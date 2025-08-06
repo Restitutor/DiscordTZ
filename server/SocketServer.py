@@ -40,7 +40,7 @@ class SocketServer:
 
     async def TCPInit(this, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
-            msg: bytes = await reader.read(1000000)
+            msg: bytes = await reader.read(65535)
         except Exception as e:
             Logger.error(f"Error reading from client: {e}")
             return
