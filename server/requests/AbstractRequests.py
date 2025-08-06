@@ -1,0 +1,182 @@
+import asyncio
+import json
+import random
+
+import geoip2
+from geoip2.models import City
+
+from server.Api import ApiKey, ApiPermissions
+from server.EventHandler import EventHandler
+from server.protocol.Client import Client
+from server.protocol.TCP import TCPClient
+from server.ServerError import ErrorCode
+from shared import Helpers
+from shell.Logger import Logger
+
+
+class SimpleRequest:
+    client: Client
+    headers: dict
+    data: dict
+    response: list | None = None
+    city: City | None
+    protocol: str
+
+    commonEventHandler: EventHandler = EventHandler()
+
+    def __init__(this, client: Client, headers: dict, data: dict):
+        this.client = client
+        this.data = data
+        this.headers = headers
+
+        this.protocol = "TCP" if isinstance(client, TCPClient) else "UDP"
+        try:
+            this.city = Helpers.tzBot.maxMindDb.city(this.client.ipAddress[0])
+        except geoip2.errors.AddressNotFoundError:
+            this.city = None
+
+        if this.__class__.__name__ == "SimpleRequest":
+            this.client.encrypt = False
+            this.respond()
+
+    def respond(this):
+        if this.__class__.__name__ == "SimpleRequest":
+            this.response = ErrorCode.BAD_REQUEST
+            this.client.encrypt = False
+
+        asyncio.create_task(sendResponse(this))
+
+    def __str__(this):
+        return f"{this.__class__.__name__}({this.protocol}, {this.client.ipAddress}, {this.headers}, {this.data})"
+
+
+class PartiallyEncryptedRequest(SimpleRequest):
+    def __init__(this, client: Client, headers: dict, data: dict):
+        super().__init__(client, headers, data)
+        if not client.encrypt and not Helpers.isLocalSubnet(this.client.ipAddress[0]):
+            this.response = ErrorCode.BAD_REQUEST
+            this.response[1] = "Bad Request, Unencrypted"
+
+
+class EncryptedRequest(PartiallyEncryptedRequest):
+    def __init__(this, client: Client, headers: dict, data: dict):
+        super().__init__(client, headers, data)
+        if this.response is None and not this.client.encrypt:
+            this.response = ErrorCode.BAD_REQUEST
+            this.response[1] = "Bad Request, Unencrypted"
+
+
+class APIRequest(PartiallyEncryptedRequest):
+    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions):
+        super().__init__(client, headers, data)
+        if this.response is None:
+            this.rawApiKey = this.headers.get("apiKey")
+            if this.rawApiKey is None:
+                this.response = ErrorCode.FORBIDDEN
+                return
+
+            if not Helpers.tzBot.apiDb.isValidKey(this.rawApiKey):
+                Logger.error("Key isn't in the DB")
+                this.response = ErrorCode.FORBIDDEN
+                return
+
+            this.apiKey = ApiKey.fromDbForm(this.rawApiKey)
+
+            if not this.apiKey.hasPermissions(*requiredPerms):
+                Logger.error("No permissions")
+                this.response = ErrorCode.FORBIDDEN
+                return
+
+
+class UserIdRequest(APIRequest):
+    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions):
+        super().__init__(client, headers, data, *requiredPerms)
+        if this.response is None:
+            this.userId = int(data.get("userId")) if str(data.get("userId")).isnumeric() else None
+            if this.userId is None:
+                this.response = ErrorCode.BAD_REQUEST
+
+
+class AliasRequest(APIRequest):
+    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions):
+        super().__init__(client, headers, data, *requiredPerms)
+        if this.response is None:
+            this.alias = str(data.get("alias"))
+            if this.alias is None:
+                this.response = ErrorCode.BAD_REQUEST
+
+
+class UUIDRequest(APIRequest):
+    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions):
+        super().__init__(client, headers, data, *requiredPerms)
+        if this.response is None:
+            this.uuid = data.get("uuid")
+            if this.uuid is None or not Helpers.isUUID(this.uuid):
+                this.response = ErrorCode.BAD_REQUEST
+                this.response[1] = "Invalid UUID"
+
+
+async def chinaResponse(request: SimpleRequest) -> None:
+    messages: list[str] = [
+        "Taiwan is a country.",
+        "Fuck Xi Jinping.",
+        "Fuck the CCP.",
+        "Free Taiwan.",
+        "Tiananmen Square June 4th 1989.",
+        "Xi Jinping = Winnie the Pooh",
+        "动态网自由门",
+        "天安門",
+        "天安门",
+        "法輪功",
+        "李 洪 志",
+        "Free Tibet",
+        "六四天安門事件",
+        "The Tiananmen Square protests of 1989",
+        "天安門 大屠殺",
+        "The Tiananmen Square Massacre",
+        "反右派鬥爭",
+        "The Anti-Rightist Struggle",
+        "大躍進政策",
+        "The Great Leap Forward",
+        "文化大革命",
+        "The Bad Proletarian Cultural Revolution",
+        "人權",
+        "Human Rights",
+        "民運",
+        "Democratization",
+        "自由",
+        "Freedom",
+        "獨立",
+        "Independence",
+        "多黨制",
+        "Multi-party system",
+        "台灣",
+        "臺灣",
+        "Taiwan",
+        "Formosa",
+        "西藏",
+        "新疆維吾爾自治區",
+        "民主",
+        "言論",
+        "思想",
+    ]
+
+    request.response[0] = 403
+    request.response[1] = random.choice(messages)
+    request.client.encrypt = False
+
+
+async def sendResponse(request: SimpleRequest) -> None:
+    if request.city is not None and request.city.country.iso_code in {"SG", "CN", "MO", "HK"}:
+        await chinaResponse(request)
+    else:
+        if request.response[0] == 200:
+            request.commonEventHandler.triggerSuccess(request)
+        else:
+            request.commonEventHandler.triggerError(request)
+
+    resp = {"code": request.response[0], "message": request.response[1]}
+
+    Logger.log(f"Responding with: {resp}")
+    request.client.send(json.dumps(resp).encode())
+    return

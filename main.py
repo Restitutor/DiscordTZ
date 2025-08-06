@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+import asyncio
+import json
+import os
+import shutil
+import subprocess
+import time
+from pathlib import Path
+
+import discord
+import requests
+
+from modules.TZBot import TZBot
+from server.SocketServer import SocketServer
+from shell import Shell
+from shell.Logger import Logger
+
+
+def getGeoIP(conf: dict):
+    dbStats = Path.stat(Path("GeoLite2-City.mmdb")) if Path("GeoLite2-City.mmdb").is_file() else None
+    if dbStats is not None:
+        currentTime = time.time()
+        secondsDiff = currentTime - dbStats.st_ctime
+        if secondsDiff < 86400:
+            Logger.log("Skipping GeoLite2 database download, it was updated less than 24 hours ago.")
+            return
+
+    Logger.log("Downloading GeoLite2 database...")
+    response = requests.get(
+        "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz",
+        auth=(conf["maxmind"]["accountId"], conf["maxmind"]["token"]),
+        stream=True,
+    )
+
+    with open("GeoLite2-City.tar.gz", "wb") as file:
+        file.write(response.content)
+
+    Path.mkdir(Path("GeoLite2-City"))
+    subprocess.run(["tar", "-xf", "GeoLite2-City.tar.gz", "-C", "GeoLite2-City"])
+    shutil.move(f"GeoLite2-City/{os.listdir('GeoLite2-City')[0]}/GeoLite2-City.mmdb", "GeoLite2-City.mmdb")  # noqa: PTH208
+    Path.unlink(Path("GeoLite2-City.tar.gz"))
+    Path.unlink(Path("GeoLite2-City/"))
+
+
+async def main():
+    with open("config.json") as f:
+        config = json.loads(f.read())
+
+    shellTask = asyncio.create_task(Shell.startShell())
+    getGeoIP(config)
+    serverStarter = asyncio.create_task(SocketServer().start())
+
+    client = TZBot(command_prefix="tz!", help_command=None, intents=discord.Intents.all())
+    async with client:
+        await client.start(config["token"])
+
+    tasks = await asyncio.gather(serverStarter, shellTask, return_exceptions=True)
+    for result in tasks:
+        if isinstance(result, Exception):
+            Logger.log(f"Task failed: {result}")
+
+
+asyncio.run(main())

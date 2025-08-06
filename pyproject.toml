@@ -1,0 +1,88 @@
+[project]
+name = "TimezoneBot"
+version = "1.0.0"
+description = "A Discord bot for keeping track of people's timezones"
+authors = [{name="M3z0id"}]
+requires-python = ">=3.13"
+
+dependencies = [
+    "py-cord==2.6.1",
+    "mariadb==1.1.12",
+    "datetime==5.5",
+    "asyncio==3.4.3",
+    "pycryptodome==3.22.0",
+    "geoip2~=5.1.0",
+    "pytz~=2025.2",
+    "requests~=2.32.3",
+    "prompt_toolkit~=3.0.51",
+    "tzlocal==5.3.1",
+    "sqlite3-to-mysql==2.4.2",
+    "mysql-to-sqlite3==2.4.2",
+    "dataclasses-json==0.6.7",
+    "aiosqlite>=0.21.0",
+]
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "packetsender.py"
+]
+target-version = "py313"
+line-length = 150
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # pathlib
+    "PTH"
+]
+ignore = [
+    # If statements in parentheses
+    "PLC0414",
+    # Path.open()
+    "PTH123"
+]
+fixable = ["ALL"]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
