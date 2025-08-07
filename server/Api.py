@@ -2,7 +2,6 @@ import base64
 import json
 import random
 import string
-from collections.abc import Callable
 from enum import IntFlag
 
 from server.ServerCrypto import AESDecrypt, AESEncrypt
@@ -41,8 +40,8 @@ class ApiKey:
 
         return (ApiPermissions(this.permissions) & required) == required
 
-    def prettyPrintPerms(this) -> list[Callable[[], str | None]]:
-        return [flag.name for flag in ApiPermissions if ApiPermissions(this.permissions) & flag]
+    def prettyPrintPerms(this) -> list[str]:
+        return [flag.name for flag in ApiPermissions if ApiPermissions(this.permissions) & flag and flag.name is not None]
 
     def toDbForm(this) -> str:
         return (
