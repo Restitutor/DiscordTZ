@@ -1,20 +1,25 @@
 import datetime
-
-from shell.Shell import log
+from collections.abc import Callable
 
 
 class Logger:
+    logFunc: Callable = print
+
+    @classmethod
+    def setLogFunction(cls, logFunc: Callable) -> None:
+        cls._logFunc = logFunc
+
     @staticmethod
     def log(message: object) -> None:
         timeNow: str = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-        log(f"[{timeNow}] [LOG] {message}")
+        Logger._logFunc(f"[{timeNow}] [LOG] {message}")
 
     @staticmethod
     def error(message: object) -> None:
         timeNow: str = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-        log(f"[{timeNow}] [ERROR] {message}")
+        Logger._logFunc(f"[{timeNow}] [ERROR] {message}")
 
     @staticmethod
     def success(message: object) -> None:
         timeNow: str = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-        log(f"[{timeNow}] [SUCCESS] {message}")
+        Logger._logFunc(f"[{timeNow}] [SUCCESS] {message}")

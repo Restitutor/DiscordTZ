@@ -13,7 +13,7 @@ import requests
 from config.Config import Config, MaxmindConfig
 from modules.TZBot import TZBot
 from server.SocketServer import SocketServer
-from shell import Shell
+from shell.Shell import Shell
 from shell.Logger import Logger
 
 
@@ -49,7 +49,10 @@ async def main() -> None:
     async with aiofiles.open("config.json") as f:
         config: Config = Config.schema().loads(await f.read())
 
-    shellTask = asyncio.create_task(Shell.startShell())
+    shell = Shell()
+    async with shell:
+        shellTask = asyncio.create_task(shell.run_async())
+
     getGeoIP(config.maxmind)
     serverStarter = asyncio.create_task(SocketServer(config.server).start())
 

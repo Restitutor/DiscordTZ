@@ -1,94 +1,83 @@
-# --- Core Imports ---
-import os
-import stat
 import sys
-from pathlib import Path
 
 from prompt_toolkit import Application
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.history import FileHistory
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.layout import HSplit, Layout
 from prompt_toolkit.widgets import TextArea
 
-
-# --- Command Registry ---
-def cmdExit(args: list[str]) -> None:
-    code = int(args[0]) if args and args[0].isalnum() else 0
-    sys.exit(code)
+from shell.Commands import createCommandSystem
+from shell.Logger import Logger
 
 
-def cmdEcho(args: list[str]) -> None:
-    message = " ".join(args) if args else "No message provided."
-    log(message)
+class Shell(Application):
+    def __init__(this) -> None:
+        Logger.setLogFunction(this.log)
 
+        this.commandRegistry, this.commandContext = createCommandSystem(this)
+        this.commandList = this.commandRegistry.getCommandNames()
 
-def cmdRestart(args: list[str]) -> None:  # noqa: ARG001
-    log("Restarting the shell...")
-    execPath: Path = Path(sys.argv[0])
-    try:
-        os.execv(sys.argv[0], sys.argv)
-    except OSError:
-        oldMode = Path.stat(execPath).st_mode
-        oldPerms = stat.S_IMODE(oldMode)
+        this.logLines: list[str] = []
+        this.autoScroll = True
+        this.logWindow = TextArea(scrollbar=True, wrap_lines=True, read_only=True, focusable=True)
 
-        newPerms = oldPerms | 0o111  # Equivalent to +x
+        this.inputField = TextArea(
+            height=1,
+            prompt="Timezone Bot > ",
+            multiline=False,
+            read_only=False,
+            focusable=True,
+            accept_handler=this.cmdAcceptHandler,
+            completer=WordCompleter(this.commandList, ignore_case=True),
+            history=FileHistory(".tzhistory"),
+        )
 
-        Path.chmod(execPath, newPerms)
-        os.execv(sys.argv[0], sys.argv)
+        this.layout = Layout(HSplit([this.logWindow, this.inputField]), focused_element=this.inputField)
 
+        this.keyBindings = KeyBindings()
+        this.keyBindings.add("c-up")(lambda event: this.layout.focus(this.logWindow))  # noqa: ARG005
+        this.keyBindings.add("c-down")(lambda event: this.layout.focus(this.inputField))  # noqa: ARG005
 
-def cmdClear(args: list[str]) -> None:  # noqa: ARG001
-    logArea.buffer.text = ""
+        super().__init__(layout=this.layout, full_screen=True, key_bindings=this.keyBindings)
 
+    def log(this, msg: str) -> None:
+        this.logLines.append(msg)
+        this.logWindow.text = "\n".join(this.logLines)
+        this.invalidate()
 
-command_registry = {
-    "exit": cmdExit,
-    "echo": cmdEcho,
-    "restart": cmdRestart,
-    "clear": cmdClear,
-}
+        if this.autoScroll:
+            this.logWindow.buffer.cursor_position = len(this.logWindow.text)
 
-# --- Log and Input ---
-logArea = TextArea(scrollbar=False, wrap_lines=True, read_only=False, focusable=False)
+    def toggleAutoScroll(this, event: KeyPressEvent) -> None:  # noqa: ARG002
+        this.autoScroll = not this.autoScroll
+        if this.autoScroll:
+            this.log("Autoscroll: ON")
+            this.scrollToBottom()
+        else:
+            this.log("Autoscroll: OFF")
 
-inputField = TextArea(height=1, prompt="Timezone Bot > ", multiline=False)
+    def scrollToBottom(this) -> None:
+        window = this.logWindow.window
+        if window.render_info:
+            maxScroll = max(0, window.render_info.content_height - window.render_info.window_height)
+            window.vertical_scroll = maxScroll
+            this.invalidate()
 
+    def cmdAcceptHandler(this, buffer: Buffer) -> bool:
+        text = buffer.text.strip()
 
-def log(message: object) -> None:
-    logArea.buffer.insert_text(str(message) + "\n")
+        if not text:
+            return True
 
+        buffer.history.append_string(text)
+        result = this.commandRegistry.executeCommand(text, this.commandContext)
+        if not result.success and result.message:
+            this.log(result.message)
 
-def parseAndExec(userInput: str) -> None:
-    parts = userInput.strip().split()
-    if not parts:
-        return
+        if result.shouldExit:
+            sys.exit(result.exitCode)
 
-    command = parts[0].lower()
-    args = parts[1:]
-
-    handler = command_registry.get(command)
-    if handler:
-        handler(args)
-    else:
-        log(f"Unknown command: '{command}'")
-
-
-# --- Key Bindings ---
-kb = KeyBindings()
-
-
-@kb.add("enter")
-def onEnter(event: KeyPressEvent) -> None:
-    userInput = inputField.text
-    parseAndExec(userInput)
-    inputField.text = ""
-    event.app.layout.focus(inputField)
-
-
-# --- Layout and App ---
-layout = Layout(HSplit([logArea, inputField]), focused_element=inputField)
-
-app = Application(layout=layout, key_bindings=kb, full_screen=True)
-
-
-async def startShell() -> None:
-    await app.run_async()
+        buffer.reset()
+        return False

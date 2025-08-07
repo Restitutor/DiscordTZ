@@ -7,3 +7,4 @@ uv.lock
 config.json
 packetsender.py
 IfFormatter.py
+.tzhistory
