@@ -20,6 +20,7 @@ dependencies = [
     "mysql-to-sqlite3==2.4.2",
     "dataclasses-json==0.6.7",
     "aiosqlite>=0.21.0",
+    "aiofiles>=24.1.0",
 ]
 
 [tool.ruff]
@@ -57,27 +58,31 @@ line-length = 150
 indent-width = 4
 
 [tool.ruff.lint]
-select = [
-    # pycodestyle
-    "E",
-    # Pyflakes
-    "F",
-    # pyupgrade
-    "UP",
-    # flake8-bugbear
-    "B",
-    # flake8-simplify
-    "SIM",
-    # isort
-    "I",
-    # pathlib
-    "PTH"
-]
+select = ["ALL"]
 ignore = [
-    # If statements in parentheses
-    "PLC0414",
-    # Path.open()
-    "PTH123"
+    "D",        # Docstring
+    "ANN002",   # *args type annotation
+    "ANN003",   # **kwargs type annotation
+    "C901",     # function too complex
+    "COM812",   # Trailing comma
+    "DTZ005",   # datetime without timezone
+    "INP001",   # __init__.py in packages
+    "N802",     # lowercase function names
+    "N803",     # lowercase arg names
+    "N805",     # self in member functions
+    "N806",     # lowercase var names
+    "N815",     # mixCaseOmg
+    "N816",     # camelCase
+    "PLC0414",  # If statements in parentheses
+    "PLR0912",  # Too many branches
+    "PTH123",   # Path.open()
+    "RUF006",   # Storing return value of a function
+    "RUF012",   # Annotation with @typing.ClassVar
+    "S104",     # Binding to all interfaces
+    "S112",     # Logging exceptions
+    "S606",     # Starting process without a shell
+    "SLF001",   # Private member accessed
+    "TRY300",   # Use else block instead of catch
 ]
 fixable = ["ALL"]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"

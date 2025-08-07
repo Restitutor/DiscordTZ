@@ -1,21 +1,22 @@
 import asyncio
+from collections.abc import Callable
 
 
 class EventHandler:
-    def __init__(self):
-        self.initErrorCallbacks = []
-        self.initSuccessCallbacks = []
+    def __init__(this) -> None:
+        this.initErrorCallbacks: list[Callable] = []
+        this.initSuccessCallbacks: list[Callable] = []
 
-    def onError(self, callback):
-        self.initErrorCallbacks.append(callback)
+    def onError(this, instance: Callable) -> None:
+        this.initErrorCallbacks.append(instance)
 
-    def onSuccess(self, callback):
-        self.initSuccessCallbacks.append(callback)
+    def onSuccess(this, instance: Callable) -> None:
+        this.initSuccessCallbacks.append(instance)
 
-    def triggerError(self, instance):
-        for callback in self.initErrorCallbacks:
+    def triggerError(this, instance: Callable) -> None:
+        for callback in this.initErrorCallbacks:
             asyncio.create_task(callback(instance))
 
-    def triggerSuccess(self, instance):
-        for callback in self.initSuccessCallbacks:
+    def triggerSuccess(this, instance: Callable) -> None:
+        for callback in this.initSuccessCallbacks:
             asyncio.create_task(callback(instance))

@@ -11,18 +11,18 @@ from shell.Logger import Logger
 
 
 async def getTimezones(ctx: discord.AutocompleteContext) -> list[str]:
+    maxShowableResults = 25
     result: list[str] = []
 
     cityMatches = [f"{tz['area']}/{tz['city']}" for tz in timezones if str(tz.get("city", "")).lower().startswith(ctx.value.lower())]
-
     areaMatches = [f"{tz['area']}/{tz['city']}" for tz in timezones if str(tz.get("area", "")).lower().startswith(ctx.value.lower())]
 
-    for choice in cityMatches[:25]:
-        result.append(choice)
+    for choice in cityMatches[:maxShowableResults]:
+        result.append(choice)  # noqa: PERF402
 
-    if len(result) < 25:
+    if (len(result) < maxShowableResults):
         for choice in areaMatches:
-            if len(result) == 25:
+            if (len(result) == maxShowableResults):
                 break
             result.append(choice)
 
@@ -43,10 +43,10 @@ class TzCommands(commands.Cog):
         timezone: discord.Option(str, "The timezone you are in.", autocomplete=getTimezones),
         tzalias: discord.Option(str, "Alias with which other people will get your time.", required=False, default=None),
     ) -> None:
-        if tzalias is None:
+        if (tzalias is None):
             tzalias = ctx.user.name
 
-        if timezone not in checkList:
+        if (timezone not in checkList):
             Logger.error(f"{ctx.user} tried to set their timezone to {timezone}.")
 
             await ctx.response.send_message(
@@ -54,7 +54,7 @@ class TzCommands(commands.Cog):
             )
             return
 
-        if this.client.db.set(ctx.user.id, timezone, tzalias):
+        if (this.client.db.set(ctx.user.id, timezone, tzalias)):
             successCpy = this.client.success.copy()
             successCpy.set_footer(text=ctx.user.name, icon_url=ctx.user.avatar.url)
             successCpy.timestamp = datetime.datetime.now()
@@ -71,7 +71,7 @@ class TzCommands(commands.Cog):
     async def tzGet(this, ctx: discord.ApplicationContext) -> None:
         res: str | None = this.client.db.getTimeZone(ctx.user.id)
 
-        if res is None:
+        if (res is None):
             failCpy = this.client.fail
             failCpy.set_footer(text=ctx.user.name, icon_url=ctx.user.avatar.url)
             failCpy.timestamp = datetime.datetime.now()
@@ -82,11 +82,11 @@ class TzCommands(commands.Cog):
 
     @timezoneGroup.command(name="alias", description="Alias when people want to know your time.")
     async def alias(this, ctx: discord.ApplicationContext, tzalias: discord.Option(str, "Alias with which other people will get your time.")) -> None:
-        if " " in tzalias:
+        if (" " in tzalias):
             await ctx.response.send_message("Aliases can't contain spaces!", ephemeral=True)
             return
 
-        if this.client.db.setAlias(ctx.user.id, tzalias):
+        if (this.client.db.setAlias(ctx.user.id, tzalias)):
             successCpy = this.client.success.copy()
             successCpy.set_footer(text=ctx.user.name, icon_url=ctx.user.avatar.url)
             successCpy.timestamp = datetime.datetime.now()
@@ -122,7 +122,7 @@ class TzCommands(commands.Cog):
 
     @discord.slash_command(name="tznow", description="Shows the time in a certain timezone.")
     async def nowTz(this, ctx: discord.ApplicationContext, timezone: discord.Option(str, "Timezone to show", autocomplete=getTimezones)) -> None:
-        if timezone not in checkList:
+        if (timezone not in checkList):
             await ctx.response.send_message(
                 "Invalid timezone. Use [this table]\
             (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for reference.",

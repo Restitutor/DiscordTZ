@@ -1,5 +1,6 @@
 from enum import Enum
 
+from server.requests.AbstractRequests import SimpleRequest
 from server.requests.Requests import (
     AliasFromUserRequest,
     CommandRequest,
@@ -32,12 +33,12 @@ class RequestType(Enum):
     TIMEZONE_FROM_UUID = TimezoneFromUUIDRequest
     TIMEZONE_OVERRIDE_REMOVE = TimeZoneOverrideRemove
 
-    def __call__(this, *args, **kwargs):
+    def __call__(this, *args, **kwargs) -> SimpleRequest:
         return this.value(*args, **kwargs)
 
     @classmethod
-    def get(cls, value, default=None):
+    def get(cls, value: str) -> SimpleRequest | None:
         for member in cls:
-            if member.value == value or member.value.__name__ == value:
+            if (value in (member.value, member.value.__name__)):
                 return member
-        return default
+        return None

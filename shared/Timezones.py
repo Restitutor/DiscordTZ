@@ -8,11 +8,11 @@ def fetchTimezones() -> list[dict[str, str]]:
     parentDir: str = "/usr/share/zoneinfo/"
     files: list[dict[str, str]] = []
     for root, _dirs, filenames in os.walk(parentDir):
-        if "posix" in root or "right" in root:
+        if ("posix" in root or "right" in root):
             continue
         for filename in filenames:
             relativePath = os.path.relpath(Path(root, filename), parentDir)
-            if "/" in relativePath:
+            if ("/" in relativePath):
                 files.append({"area": relativePath.split("/")[0], "city": relativePath.split("/")[-1].replace("_", " ")})
     return files
 

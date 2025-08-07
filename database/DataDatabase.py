@@ -16,14 +16,14 @@ class Database:
     tzOverrideTableName: str
     _connectionDetails: dict
 
-    def __init__(this, connectionDetails: dict):
+    def __init__(this, connectionDetails: dict) -> None:
         this._connectionDetails = connectionDetails
 
         this._reconnect()
         this.tzTableName = connectionDetails.get("tzTableName")
         this.tzOverrideTableName = connectionDetails.get("overridesTableName")
 
-    def _reconnect(this):
+    def _reconnect(this) -> None:
         this.conn = mariadb.connect(
             database=this._connectionDetails.get("database"),
             user=this._connectionDetails.get("user"),
@@ -35,16 +35,15 @@ class Database:
 
     def set(this, userId: int, timezone: str, alias: str) -> bool:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
         query: str = f"INSERT into {this.tzTableName} (user, timezone, alias) VALUES (%s, %s, %s)\
-         ON DUPLICATE KEY UPDATE timezone = VALUES(timezone), alias = VALUES(alias);"
+         ON DUPLICATE KEY UPDATE timezone = VALUES(timezone), alias = VALUES(alias);"  # noqa: S608
 
         data: tuple[int, str, str] = (userId, timezone.replace(" ", "_"), alias)
 
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             return True
         except mariadb.Error as e:
             Logger.error(f"Error while writing data to database: {e}")
@@ -52,15 +51,14 @@ class Database:
 
     def setAlias(this, userId: int, alias: str) -> bool:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"UPDATE {this.tzTableName} SET alias = %s WHERE user = %s;"
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"UPDATE {this.tzTableName} SET alias = %s WHERE user = %s;"  # noqa: S608
 
         data: tuple[str, int] = (alias, userId)
 
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             return cursor.rowcount > 0
         except mariadb.Error as e:
             Logger.error(f"Error while writing data to database: {e}")
@@ -68,23 +66,20 @@ class Database:
 
     def getTimeZone(this, userId: int) -> str | None:
         this._reconnect()
-        if not isinstance(userId, int):
-            return None
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT timezone from {this.tzTableName} WHERE user = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT timezone from {this.tzTableName} WHERE user = %s"  # noqa: S608
         data: list[int] = [userId]
 
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
 
             result = cursor.fetchone()
 
-            if result:
+            if (result):
                 return str(result[0])
-            else:
-                return None
+            return None
 
         except mariadb.Error as e:
             Logger.error(f"Failed to get timezone: {e}")
@@ -92,20 +87,18 @@ class Database:
 
     def getAlias(this, userId: int) -> str | None:
         this._reconnect()
-        if not isinstance(userId, int):
-            return None
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT alias from {this.tzTableName} WHERE user = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT alias from {this.tzTableName} WHERE user = %s"  # noqa: S608
         data: list[int] = [userId]
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             result = cursor.fetchone()
-            if result:
+
+            if (result):
                 return str(result[0])
-            else:
-                return None
+            return None
 
         except mariadb.Error as e:
             Logger.error(f"Failed to get alias: {e}")
@@ -113,18 +106,17 @@ class Database:
 
     def getUserByAlias(this, alias: str) -> str | None:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT user from {this.tzTableName} WHERE alias = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT user from {this.tzTableName} WHERE alias = %s"  # noqa: S608
         data: list[str] = [alias]
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             result = cursor.fetchone()
-            if result:
+            if (result):
                 return str(result[0])
-            else:
-                return None
+            return None
 
         except mariadb.Error as e:
             Logger.error(f"Failed to get user by alias: {e}")
@@ -132,18 +124,17 @@ class Database:
 
     def getTimeZoneByAlias(this, alias: str) -> str | None:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT timezone from {this.tzTableName} WHERE alias = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT timezone from {this.tzTableName} WHERE alias = %s"  # noqa: S608
         data: list[str] = [alias]
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             result = cursor.fetchone()
-            if result:
+            if (result):
                 return str(result[0])
-            else:
-                return None
+            return None
 
         except mariadb.Error as e:
             Logger.error(f"Failed to get timezone by alias: {e}")
@@ -151,15 +142,14 @@ class Database:
 
     def getAllAliases(this) -> list[str] | None:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT alias from {this.tzTableName}"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT alias from {this.tzTableName}"  # noqa: S608
         try:
             cursor.execute(query)
-            conn.commit()
+            this.conn.commit()
             result = cursor.fetchall()
-            aliases = [value[0] for value in result]
-            return aliases
+            return [value[0] for value in result]
 
         except mariadb.Error as e:
             Logger.error(f"Failed to get all aliases: {e}")
@@ -167,15 +157,15 @@ class Database:
 
     def addTzOverride(this, uuid: str, timezone: str) -> bool:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"INSERT into {this.tzOverrideTableName} (uuid, timezone) VALUES (%s, %s) ON DUPLICATE KEY UPDATE timezone = VALUES(timezone)"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"INSERT into {this.tzOverrideTableName} (uuid, timezone) VALUES (%s, %s) ON DUPLICATE KEY UPDATE timezone = VALUES(timezone)"  # noqa: S608
 
         data: tuple[str, str] = (uuid, timezone)
 
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             return True
         except mariadb.Error as e:
             Logger.error(f"Error while writing data to database: {e}")
@@ -183,12 +173,12 @@ class Database:
 
     def getTzOverrides(this) -> dict[str, str] | None:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT uuid, timezone from {this.tzOverrideTableName}"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT uuid, timezone from {this.tzOverrideTableName}"  # noqa: S608
         try:
             cursor.execute(query)
-            conn.commit()
+            this.conn.commit()
             result = cursor.fetchall()
             return {value[0]: value[1] for value in result}
 
@@ -198,13 +188,13 @@ class Database:
 
     def getTzOverrideByUUID(this, uuid: str) -> str | None:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT timezone from {this.tzOverrideTableName} WHERE uuid = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT timezone from {this.tzOverrideTableName} WHERE uuid = %s"  # noqa: S608
         data: tuple[str] = (uuid,)
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             result = cursor.fetchone()
             return result if result is None else result[0]
         except mariadb.Error as e:
@@ -213,13 +203,13 @@ class Database:
 
     def removeTzOverride(this, uuid: str) -> bool:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"DELETE FROM {this.tzOverrideTableName} WHERE uuid = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"DELETE FROM {this.tzOverrideTableName} WHERE uuid = %s"  # noqa: S608
         data: tuple[str] = (uuid,)
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             return True
         except mariadb.Error as e:
             Logger.error(f"Failed to remove timezone override: {e}")
@@ -227,14 +217,14 @@ class Database:
 
     def assignUUIDToUserId(this, uuid: str | None, userId: int, timezone: str, alias: str) -> bool:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
         query: str = "INSERT INTO timezones (user, uuid, timezone, alias) VALUES (%s, %s, %s, %s) ON CONFLICT(user) DO UPDATE SET uuid = %s;"
 
         data: tuple[int, str, str, str, str] = (userId, uuid, timezone, alias, uuid)
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             return True
         except mariadb.Error as e:
             Logger.error(f"Failed to assign UUID to user: {e}")
@@ -242,13 +232,13 @@ class Database:
 
     def unassignUUIDFromUserId(this, userId: int) -> bool:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"UPDATE {this.tzOverrideTableName} WHERE SET uuid = NULL WHERE user = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"UPDATE {this.tzOverrideTableName} WHERE SET uuid = NULL WHERE user = %s"  # noqa: S608
 
         try:
             cursor.execute(query, (userId,))
-            conn.commit()
+            this.conn.commit()
             return True
         except mariadb.Error as e:
             Logger.error(f"Failed to unassign UUID from user: {e}")
@@ -256,28 +246,28 @@ class Database:
 
     def getUUIDByUserId(this, userId: int) -> str | None:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT uuid from {this.tzTableName} WHERE user = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT uuid from {this.tzTableName} WHERE user = %s"  # noqa: S608
         data: tuple[int] = (userId,)
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             result = cursor.fetchone()
             return result[0]
         except mariadb.Error as e:
             Logger.error(f"Failed to get UUID by user: {e}")
             return None
 
-    def getUserIdByUUID(this, uuid: str):
+    def getUserIdByUUID(this, uuid: str) -> int | None:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT user from {this.tzTableName} WHERE uuid = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT user from {this.tzTableName} WHERE uuid = %s"  # noqa: S608
         data: tuple[str] = (uuid,)
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             result = cursor.fetchone()
             return result if result is None else result[0]
         except mariadb.Error as e:
@@ -286,17 +276,17 @@ class Database:
 
     def getTimezoneByUUID(this, uuid: str) -> str | None:
         this._reconnect()
-        conn: mariadb.Connection = this.conn
-        cursor: mariadb.Cursor = conn.cursor(prepared=True)
-        query: str = f"SELECT timezone from {this.tzTableName} WHERE uuid = %s"
+
+        cursor: mariadb.Cursor = this.conn.cursor(prepared=True)
+        query: str = f"SELECT timezone from {this.tzTableName} WHERE uuid = %s"  # noqa: S608
         data = (uuid,)
         try:
             cursor.execute(query, data)
-            conn.commit()
+            this.conn.commit()
             result = cursor.fetchone()
             try:
                 return result[0]
-            except Exception:
+            except IndexError:
                 return result
 
         except mariadb.Error as e:

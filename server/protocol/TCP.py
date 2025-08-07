@@ -12,7 +12,7 @@ class TCPClient(Client):
         super().__init__(this.writer.get_extra_info("peername"), aesKey)
 
     def send(this, data: bytes) -> None:
-        if this.encrypt:
+        if (this.encrypt):
             data = RSAEncrypt(data, this.rsaKey) if this.rsaKey is not None else AESEncrypt(data, this.aesKey)
 
         this.writer.write(data)

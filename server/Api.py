@@ -2,6 +2,7 @@ import base64
 import json
 import random
 import string
+from collections.abc import Callable
 from enum import IntFlag
 
 from server.ServerCrypto import AESDecrypt, AESEncrypt
@@ -27,7 +28,7 @@ class ApiKey:
         permissions: int,
         validUntil: str = "INFINITE",
         keyId: str = "".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(32)),
-    ):
+    ) -> None:
         this.owner = owner
         this.permissions = permissions
         this.validUntil = validUntil
@@ -40,7 +41,7 @@ class ApiKey:
 
         return (ApiPermissions(this.permissions) & required) == required
 
-    def prettyPrintPerms(this):
+    def prettyPrintPerms(this) -> list[Callable[[], str | None]]:
         return [flag.name for flag in ApiPermissions if ApiPermissions(this.permissions) & flag]
 
     def toDbForm(this) -> str:
@@ -53,7 +54,7 @@ class ApiKey:
         )
 
     @classmethod
-    def fromDbForm(cls, dbFormKey: str):
+    def fromDbForm(cls, dbFormKey: str):  # noqa: ANN206
         data = json.loads(AESDecrypt(base64.decodebytes(dbFormKey.encode()), str(Helpers.tzBot.config["server"]["apiKeysKey"]).encode()))
         return cls(**data)
 

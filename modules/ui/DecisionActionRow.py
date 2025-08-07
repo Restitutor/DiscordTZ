@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 
 import discord
@@ -11,7 +10,7 @@ from shell.Logger import Logger
 class RejectionExplanationModal(discord.ui.Modal):
     explanation: str | None = None
 
-    def __init__(this, *children: discord.InputText, custom_id: str | None = None, timeout: float | None = None):
+    def __init__(this, *children: discord.InputText, custom_id: str | None = None, timeout: float | None = None) -> None:
         super().__init__(*children, title="Explain the rejection.", custom_id=custom_id, timeout=timeout)
         this.rejectionBox = discord.ui.InputText(
             label="Rejection Reason", placeholder="This is so trash because...", style=discord.InputTextStyle.paragraph, required=True
@@ -19,19 +18,19 @@ class RejectionExplanationModal(discord.ui.Modal):
 
         this.add_item(this.rejectionBox)
 
-    async def callback(this, ctx: discord.Interaction):
+    async def callback(this, ctx: discord.Interaction) -> None:
         this.explanation = this.children[0].value
         await ctx.response.send_message("Rejection explanation recorded!", ephemeral=True)
 
 
 class DecisionActionRow(discord.ui.View):
-    def __init__(this, client: TZBot):
+    def __init__(this, client: TZBot) -> None:
         super().__init__(timeout=None)
         this.client = client
 
     @discord.ui.button(label="Accept!", style=discord.ButtonStyle.green, custom_id="ACCEPT")
-    async def acceptHandler(this, button: discord.ui.Button, ctx: discord.Interaction):
-        if ctx.user.id != this.client.ownerId:
+    async def acceptHandler(this, button: discord.ui.Button, ctx: discord.Interaction) -> None:
+        if (ctx.user.id != this.client.ownerId):
             await ctx.response.send_message("You can't do that! You aren't my owner!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to reject a request!")
             return
@@ -44,10 +43,10 @@ class DecisionActionRow(discord.ui.View):
         rejectBtn = this.get_item("REJECT")
 
         devlogRole: discord.Role = await ctx.guild._fetch_role(this.client.config["server"]["devlogRoleId"])
-        if devlogRole is None:
+        if (devlogRole is None):
             Logger.error("Devlog role not found!")
 
-        if button.custom_id == "ACCEPT":
+        if (button.custom_id == "ACCEPT"):
             embed = discord.Embed(
                 color=discord.Color.green(),
                 title="**Accepted**!",
@@ -75,8 +74,8 @@ class DecisionActionRow(discord.ui.View):
             await ctx.response.send_message("You can't do that!", ephemeral=True)
 
     @discord.ui.button(label="Reject!", style=discord.ButtonStyle.red, custom_id="REJECT")
-    async def rejectHandler(this, button: discord.ui.Button, ctx: discord.Interaction):
-        if ctx.user.id != this.client.ownerId:
+    async def rejectHandler(this, button: discord.ui.Button, ctx: discord.Interaction) -> None:
+        if (ctx.user.id != this.client.ownerId):
             await ctx.response.send_message("You can't do that! You aren't my owner!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to reject a request!")
             return
@@ -88,12 +87,10 @@ class DecisionActionRow(discord.ui.View):
         acceptBtn = this.get_item("ACCEPT")
         rejectBtn = this.get_item("REJECT")
 
-        if button.custom_id == "REJECT":
+        if (button.custom_id == "REJECT"):
             explanation = RejectionExplanationModal()
             await ctx.response.send_modal(explanation)
-
-            while explanation.explanation is None:
-                await asyncio.sleep(0.1)
+            await explanation.wait()
 
             embed = discord.Embed(
                 color=discord.Color.red(),

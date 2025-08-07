@@ -1,4 +1,3 @@
-import asyncio
 import contextlib
 import datetime
 
@@ -14,7 +13,7 @@ class TzApiExplanationModal(discord.ui.Modal):
     appInfo: str = ""
     apiUsage: str = ""
 
-    def __init__(this, *children: discord.InputText, custom_id: str | None = None):
+    def __init__(this, *children: discord.InputText, custom_id: str | None = None) -> None:
         super().__init__(*children, title="Info about your API usage.", custom_id=custom_id, timeout=None)
         this.appNameBox = discord.ui.InputText(
             label="Application Name", placeholder="My Super Cool App", style=discord.InputTextStyle.short, required=True
@@ -37,7 +36,7 @@ class TzApiExplanationModal(discord.ui.Modal):
         this.add_item(this.appInfoBox)
         this.add_item(this.apiUsageBox)
 
-    async def callback(this, ctx: discord.Interaction):
+    async def callback(this, ctx: discord.Interaction) -> None:
         this.appInfo = this.children[0].value
         this.apiUsage = this.children[1].value
         await ctx.response.send_message("Answers recorded!", ephemeral=True)
@@ -48,7 +47,7 @@ class TzApiRequestUI(discord.ui.View):
     duration: str = ""
     modal: TzApiExplanationModal | None = None
 
-    def __init__(this, client: TZBot, dialogOwner: int, *items):
+    def __init__(this, client: TZBot, dialogOwner: int, *items) -> None:
         super().__init__(*items, timeout=None)
         this.dialogOwner = dialogOwner
         this.client = client
@@ -79,8 +78,8 @@ class TzApiRequestUI(discord.ui.View):
         ],
         custom_id="PERMSELECT",
     )
-    async def permsSelect(this, selection: discord.ui.Select[list[str]], ctx: discord.Interaction):
-        if ctx.user.id != this.dialogOwner:
+    async def permsSelect(this, selection: discord.ui.Select[list[str]], ctx: discord.Interaction) -> None:
+        if (ctx.user.id != this.dialogOwner):
             await ctx.response.send_message("You can't do that!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to mess with {ctx.guild.get_member(this.dialogOwner).display_name}'s dialog!")
             return
@@ -99,8 +98,8 @@ class TzApiRequestUI(discord.ui.View):
         ],
         custom_id="DURATIONSELECT",
     )
-    async def durationSelect(this, selection: discord.ui.Select[str], ctx: discord.Interaction):
-        if ctx.user.id != this.dialogOwner:
+    async def durationSelect(this, selection: discord.ui.Select[str], ctx: discord.Interaction) -> None:
+        if (ctx.user.id != this.dialogOwner):
             await ctx.response.send_message("You can't do that!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to mess with {ctx.guild.get_member(this.dialogOwner).display_name}'s dialog!")
             return
@@ -113,17 +112,15 @@ class TzApiRequestUI(discord.ui.View):
         style=discord.ButtonStyle.success,
         custom_id="SUBMIT",
     )
-    async def buttonHandler(this, button: discord.ui.Button, ctx: discord.Interaction):
-        if ctx.user.id != this.dialogOwner:
+    async def buttonHandler(this, button: discord.ui.Button, ctx: discord.Interaction) -> None:  # noqa: ARG002
+        if (ctx.user.id != this.dialogOwner):
             await ctx.response.send_message("You can't do that!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to mess with {(await ctx.client.fetch_user(this.dialogOwner)).name}'s dialog!")
             return
 
         this.modal = TzApiExplanationModal()
         await ctx.response.send_modal(this.modal)
-
-        while this.modal.apiUsage == "" or this.modal.appInfo == "":
-            await asyncio.sleep(0.1)
+        await this.modal.wait()
 
         permsInt = ApiPermissions(0)
         for perm in this.perms:

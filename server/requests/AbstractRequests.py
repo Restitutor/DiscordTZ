@@ -24,7 +24,7 @@ class SimpleRequest:
 
     commonEventHandler: EventHandler = EventHandler()
 
-    def __init__(this, client: Client, headers: dict, data: dict):
+    def __init__(this, client: Client, headers: dict, data: dict) -> None:
         this.client = client
         this.data = data
         this.headers = headers
@@ -35,83 +35,83 @@ class SimpleRequest:
         except geoip2.errors.AddressNotFoundError:
             this.city = None
 
-        if this.__class__.__name__ == "SimpleRequest":
+        if (this.__class__.__name__ == "SimpleRequest"):
             this.client.encrypt = False
             this.respond()
 
-    def respond(this):
-        if this.__class__.__name__ == "SimpleRequest":
+    def respond(this) -> None:
+        if (this.__class__.__name__ == "SimpleRequest"):
             this.response = ErrorCode.BAD_REQUEST
             this.client.encrypt = False
 
         asyncio.create_task(sendResponse(this))
 
-    def __str__(this):
+    def __str__(this) -> str:
         return f"{this.__class__.__name__}({this.protocol}, {this.client.ipAddress}, {this.headers}, {this.data})"
 
 
 class PartiallyEncryptedRequest(SimpleRequest):
-    def __init__(this, client: Client, headers: dict, data: dict):
+    def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data)
-        if not client.encrypt and not Helpers.isLocalSubnet(this.client.ipAddress[0]):
+        if (not client.encrypt and not Helpers.isLocalSubnet(this.client.ipAddress[0])):
             this.response = ErrorCode.BAD_REQUEST
             this.response[1] = "Bad Request, Unencrypted"
 
 
 class EncryptedRequest(PartiallyEncryptedRequest):
-    def __init__(this, client: Client, headers: dict, data: dict):
+    def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data)
-        if this.response is None and not this.client.encrypt:
+        if (this.response is None and not this.client.encrypt):
             this.response = ErrorCode.BAD_REQUEST
             this.response[1] = "Bad Request, Unencrypted"
 
 
 class APIRequest(PartiallyEncryptedRequest):
-    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions):
+    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data)
-        if this.response is None:
+        if (this.response is None):
             this.rawApiKey = this.headers.get("apiKey")
-            if this.rawApiKey is None:
+            if (this.rawApiKey is None):
                 this.response = ErrorCode.FORBIDDEN
                 return
 
-            if not Helpers.tzBot.apiDb.isValidKey(this.rawApiKey):
+            if (not Helpers.tzBot.apiDb.isValidKey(this.rawApiKey)):
                 Logger.error("Key isn't in the DB")
                 this.response = ErrorCode.FORBIDDEN
                 return
 
             this.apiKey = ApiKey.fromDbForm(this.rawApiKey)
 
-            if not this.apiKey.hasPermissions(*requiredPerms):
+            if (not this.apiKey.hasPermissions(*requiredPerms)):
                 Logger.error("No permissions")
                 this.response = ErrorCode.FORBIDDEN
                 return
 
 
 class UserIdRequest(APIRequest):
-    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions):
+    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data, *requiredPerms)
-        if this.response is None:
+        if (this.response is None):
             this.userId = int(data.get("userId")) if str(data.get("userId")).isnumeric() else None
-            if this.userId is None:
+            if (this.userId is None):
                 this.response = ErrorCode.BAD_REQUEST
 
 
 class AliasRequest(APIRequest):
-    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions):
+    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data, *requiredPerms)
-        if this.response is None:
+        if (this.response is None):
             this.alias = str(data.get("alias"))
-            if this.alias is None:
+            if (this.alias is None):
                 this.response = ErrorCode.BAD_REQUEST
 
 
 class UUIDRequest(APIRequest):
-    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions):
+    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data, *requiredPerms)
-        if this.response is None:
+        if (this.response is None):
             this.uuid = data.get("uuid")
-            if this.uuid is None or not Helpers.isUUID(this.uuid):
+            if (this.uuid is None or not Helpers.isUUID(this.uuid)):
                 this.response = ErrorCode.BAD_REQUEST
                 this.response[1] = "Invalid UUID"
 
@@ -162,21 +162,19 @@ async def chinaResponse(request: SimpleRequest) -> None:
     ]
 
     request.response[0] = 403
-    request.response[1] = random.choice(messages)
+    request.response[1] = random.choice(messages)  # noqa: S311
     request.client.encrypt = False
 
 
 async def sendResponse(request: SimpleRequest) -> None:
-    if request.city is not None and request.city.country.iso_code in {"SG", "CN", "MO", "HK"}:
+    if (request.city is not None and request.city.country.iso_code in {"SG", "CN", "MO", "HK"}):
         await chinaResponse(request)
+    elif (request.response[0] == ErrorCode.OK[0]):
+        request.commonEventHandler.triggerSuccess(request)
     else:
-        if request.response[0] == 200:
-            request.commonEventHandler.triggerSuccess(request)
-        else:
-            request.commonEventHandler.triggerError(request)
+        request.commonEventHandler.triggerError(request)
 
     resp = {"code": request.response[0], "message": request.response[1]}
 
     Logger.log(f"Responding with: {resp}")
     request.client.send(json.dumps(resp).encode())
-    return

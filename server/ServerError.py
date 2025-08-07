@@ -2,7 +2,7 @@ import copy
 
 
 class DeepCopier(type):
-    def __getattribute__(cls, name):
+    def __getattribute__(cls, name: str) -> object:
         return copy.deepcopy(super().__getattribute__(name))
 
 

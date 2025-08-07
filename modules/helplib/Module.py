@@ -12,9 +12,6 @@ class Argument:
     required: bool
     defaultValue: str
 
-    def __repr__(self):
-        return self.__dict__
-
 
 @dataclass_json
 @dataclass
@@ -25,9 +22,6 @@ class Command:
     help: str
     cooldown: int
     args: list[Argument]
-
-    def __repr__(self):
-        return self.__dict__
 
 
 @dataclass_json
@@ -40,7 +34,7 @@ class CommandGroup:
     def getCommandNames(this) -> list[str]:
         commands = []
         for command in this.commands:
-            if this.name != "":
+            if (this.name != ""):
                 commands.append(f"{this.name} {command.name}")
             else:
                 commands.append(command.name)
@@ -64,11 +58,8 @@ class Module:
     def getGroupNames(this) -> list[str]:
         groups = []
         for group in this.cmdGroups:
-            if group.name in {"", None}:
+            if (group.name in {"", None}):
                 continue
             groups.append(group.name)
 
         return groups
-
-    def __repr__(self):
-        return self.__dict__

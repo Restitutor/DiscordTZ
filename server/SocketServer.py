@@ -18,13 +18,13 @@ class SocketServer:
     serverSettings: dict
     db: Database
     eventHandler: EventHandler = EventHandler()
-    tcpClients: list[TCPClient] = []
 
-    def __init__(this):
+    def __init__(this) -> None:
         with open("config.json") as f:
             this.serverSettings = json.loads(f.read())["server"]
+            this.tcpClients: list[TCPClient] = []
 
-    async def start(this):
+    async def start(this) -> None:
         tcpServer = await asyncio.start_server(this.TCPInit, "0.0.0.0", int(this.serverSettings["port"]))
         loop = asyncio.get_running_loop()
         transport, protocol = await loop.create_datagram_endpoint(lambda: UDPProtocol(this), local_addr=("0.0.0.0", int(this.serverSettings["port"])))
@@ -41,12 +41,12 @@ class SocketServer:
     async def TCPInit(this, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             msg: bytes = await reader.read(65535)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             Logger.error(f"Error reading from client: {e}")
             return
 
         for client in this.tcpClients:
-            if client.ipAddress == writer.get_extra_info("peername"):
+            if (client.ipAddress == writer.get_extra_info("peername")):
                 asyncio.create_task(this.makeObject(msg, client))
                 return
 
@@ -57,33 +57,32 @@ class SocketServer:
     async def makeObject(this, msg: bytes, client: Client) -> None:
         jsonRequest: dict | None = parseJson(msg.decode("utf-8", errors="ignore"))
 
-        if isinstance(client, TCPClient):
+        if (isinstance(client, TCPClient)):
             protocol: str = "TCP"
         else:
             protocol: str = "UDP"
 
-        if jsonRequest is not None:
+        if (jsonRequest is not None):
             Logger.log(f"Got an unencrypted {protocol} request: {jsonRequest}")
 
         else:
             decrypted = AESDecrypt(msg, client.aesKey)
             jsonRequest = parseJson(decrypted)
-            if jsonRequest is None:
+            if (jsonRequest is None):
                 Logger.log(f"Got an invalid {protocol} request: {msg}")
                 fakeJson: dict = {"requestType": "INVALID", "data": {"message": msg}}
                 fakeJsonData: dict = fakeJson.pop("data")
                 SimpleRequest(client, fakeJson, fakeJsonData)
                 return
-            else:
-                Logger.log(f"Got an encrypted {protocol} request: {jsonRequest}")
-                client.encrypt = True
+            Logger.log(f"Got an encrypted {protocol} request: {jsonRequest}")
+            client.encrypt = True
 
         if ("requestType", "data" in jsonRequest):  # noqa: F634
             member = str(jsonRequest["requestType"])
             try:
                 reqType: RequestType = getattr(RequestType, member)
             except AttributeError:
-                Logger.error(f"Invalid request type: {str(jsonRequest['requestType'])}, defaulting to SimpleRequest")
+                Logger.error(f"Invalid request type: {jsonRequest['requestType']!s}, defaulting to SimpleRequest")
                 jsonData = jsonRequest.pop("data")
                 SimpleRequest(client, jsonRequest, jsonData)
                 return

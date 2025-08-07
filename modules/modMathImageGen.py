@@ -8,7 +8,7 @@ from shared import Helpers
 
 
 class MathImageGen(commands.Cog):
-    def __init__(this, client: TZBot):
+    def __init__(this, client: TZBot) -> None:
         this.client = client
         asyncio.create_task(this.client.sync_commands())
 
@@ -22,10 +22,10 @@ class MathImageGen(commands.Cog):
         b: discord.Option(str, "Math expression for blue") = "0",
     ) -> None:
         if (returnValue := Helpers.generateImage(r, g, b)) != 0:
-            if returnValue == b"-2":
+            if (returnValue == b"-2"):
                 await ctx.response.send_message("There was a problem with your expression(s).", ephemeral=True)
 
-            if returnValue == b"-1":
+            if (returnValue == b"-1"):
                 await ctx.response.send_message("This feature is not available.", ephemeral=True)
 
             return
@@ -34,13 +34,13 @@ class MathImageGen(commands.Cog):
         await ctx.response.send_message("Here's your picture!", file=picture)
 
     @generate.error
-    async def generation_error(this, ctx: discord.ApplicationContext, error: Exception):
-        if isinstance(error, commands.CommandOnCooldown):
+    async def generation_error(this, ctx: discord.ApplicationContext, error: Exception) -> None:
+        if (isinstance(error, commands.CommandOnCooldown)):
             embed = this.client.fail.copy()
             embed.description = "You can run this once every 10 seconds!"
 
             await ctx.response.send_message(embed=embed, ephemeral=True)
 
 
-def setup(client: TZBot):
+def setup(client: TZBot) -> None:
     client.add_cog(MathImageGen(client))

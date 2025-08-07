@@ -5,23 +5,23 @@ import sys
 from pathlib import Path
 
 from prompt_toolkit import Application
-from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.layout import HSplit, Layout
 from prompt_toolkit.widgets import TextArea
 
 
 # --- Command Registry ---
-def cmd_exit(args):
+def cmdExit(args: list[str]) -> None:
     code = int(args[0]) if args and args[0].isalnum() else 0
-    exit(code)
+    sys.exit(code)
 
 
-def cmd_echo(args):
+def cmdEcho(args: list[str]) -> None:
     message = " ".join(args) if args else "No message provided."
     log(message)
 
 
-def cmd_restart(args):
+def cmdRestart(args: list[str]) -> None:  # noqa: ARG001
     log("Restarting the shell...")
     execPath: Path = Path(sys.argv[0])
     try:
@@ -36,37 +36,37 @@ def cmd_restart(args):
         os.execv(sys.argv[0], sys.argv)
 
 
-def cmd_clear(args):
-    log_area.buffer.text = ""
+def cmdClear(args: list[str]) -> None:  # noqa: ARG001
+    logArea.buffer.text = ""
 
 
 command_registry = {
-    "exit": cmd_exit,
-    "echo": cmd_echo,
-    "restart": cmd_restart,
-    "clear": cmd_clear,
+    "exit": cmdExit,
+    "echo": cmdEcho,
+    "restart": cmdRestart,
+    "clear": cmdClear,
 }
 
 # --- Log and Input ---
-log_area = TextArea(scrollbar=False, wrap_lines=True, read_only=False, focusable=False)
+logArea = TextArea(scrollbar=False, wrap_lines=True, read_only=False, focusable=False)
 
-input_field = TextArea(height=1, prompt="Timezone Bot > ", multiline=False)
-
-
-def log(message):
-    log_area.buffer.insert_text(message + "\n")
+inputField = TextArea(height=1, prompt="Timezone Bot > ", multiline=False)
 
 
-def parse_and_execute(user_input):
-    parts = user_input.strip().split()
-    if not parts:
+def log(message: object) -> None:
+    logArea.buffer.insert_text(str(message) + "\n")
+
+
+def parseAndExec(userInput: str) -> None:
+    parts = userInput.strip().split()
+    if (not parts):
         return
 
     command = parts[0].lower()
     args = parts[1:]
 
     handler = command_registry.get(command)
-    if handler:
+    if (handler):
         handler(args)
     else:
         log(f"Unknown command: '{command}'")
@@ -77,18 +77,18 @@ kb = KeyBindings()
 
 
 @kb.add("enter")
-def on_enter(event):
-    user_input = input_field.text
-    parse_and_execute(user_input)
-    input_field.text = ""
-    event.app.layout.focus(input_field)
+def onEnter(event: KeyPressEvent) -> None:
+    userInput = inputField.text
+    parseAndExec(userInput)
+    inputField.text = ""
+    event.app.layout.focus(inputField)
 
 
 # --- Layout and App ---
-layout = Layout(HSplit([log_area, input_field]), focused_element=input_field)
+layout = Layout(HSplit([logArea, inputField]), focused_element=inputField)
 
 app = Application(layout=layout, key_bindings=kb, full_screen=True)
 
 
-async def startShell():
+async def startShell() -> None:
     await app.run_async()

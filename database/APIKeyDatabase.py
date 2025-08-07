@@ -6,12 +6,12 @@ from shell.Logger import Logger
 
 
 class ApiKeyDatabase:
-    def __init__(this, config: dict):
+    def __init__(this, config: dict) -> None:
         this.encryptionKey = config["server"]["apiKeysKey"]
 
         asyncio.create_task(this._postInit())
 
-    async def _postInit(this):
+    async def _postInit(this) -> None:
         this.conn = await aiosqlite.connect("apiKeys.db")
         await this.conn.execute(
             """CREATE TABLE IF NOT EXISTS pendingApiKeys
@@ -29,17 +29,17 @@ class ApiKeyDatabase:
 
         await this.conn.commit()
 
-    async def addToPending(this, apiKey: str, messageId: int):
+    async def addToPending(this, apiKey: str, messageId: int) -> None:
         query = "INSERT INTO pendingApiKeys (base64repr, messageId) VALUES (?, ?)"
         await this.conn.execute(query, (apiKey, messageId))
         await this.conn.commit()
 
-    async def moveToReal(this, apiKey: str):
+    async def moveToReal(this, apiKey: str) -> None:
         query = "SELECT * FROM pendingApiKeys WHERE base64repr = ?"
         cursor = await this.conn.execute(query, (apiKey,))
         row = await cursor.fetchone()
 
-        if not row:
+        if (not row):
             Logger.error("Could not find API key to move to.")
             return
 
@@ -57,7 +57,7 @@ class ApiKeyDatabase:
         cursor = await this.conn.execute(query, (msgId,))
         return await cursor.fetchone()[0]
 
-    async def flushRequest(this, apiKey: str):
+    async def flushRequest(this, apiKey: str) -> None:
         query = "DELETE FROM pendingApiKeys WHERE base64repr = ?"
         cursor = await this.conn.execute(query, (apiKey,))
         await cursor.connection.commit()

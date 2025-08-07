@@ -11,12 +11,12 @@ from modules.ui.TzApiRequestUI import TzApiRequestUI
 class TzApiKeyManagement(commands.Cog):
     apiGroup = discord.SlashCommandGroup("tzapi", "TZBot API related commands")
 
-    def __init__(this, client: TZBot):
+    def __init__(this, client: TZBot) -> None:
         this.client = client
         asyncio.create_task(this.client.sync_commands())
 
     @apiGroup.command(name="requestkey", description="Request a Timezone API key")
-    async def request(this, ctx: discord.ApplicationContext):
+    async def request(this, ctx: discord.ApplicationContext) -> None:
         view = TzApiRequestUI(this.client, ctx.user.id)
         this.client.addOwner(ctx.user.id)
 
@@ -39,7 +39,7 @@ class TzApiKeyManagement(commands.Cog):
         )
 
 
-def setup(client: TZBot):
+def setup(client: TZBot) -> None:
     client.add_view(DecisionActionRow(client))
     for dialogOwner in client.dialogOwners:
         client.add_view(TzApiRequestUI(client, dialogOwner))
