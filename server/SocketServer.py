@@ -1,6 +1,6 @@
 import asyncio
-import json
 
+from config.ServerConfig import ServerConfig
 from database.DataDatabase import Database
 from server.auth.AesKeys import getAesKeyByIp
 from server.EventHandler import EventHandler
@@ -15,19 +15,18 @@ from shell.Logger import Logger
 
 
 class SocketServer:
-    serverSettings: dict
+    serverConfig: ServerConfig
     db: Database
     eventHandler: EventHandler = EventHandler()
 
-    def __init__(this) -> None:
-        with open("config.json") as f:
-            this.serverSettings = json.loads(f.read())["server"]
-            this.tcpClients: list[TCPClient] = []
+    def __init__(this, serverConfig: ServerConfig) -> None:
+        this.serverConfig = serverConfig
+        this.tcpClients: list[TCPClient] = []
 
     async def start(this) -> None:
-        tcpServer = await asyncio.start_server(this.TCPInit, "0.0.0.0", int(this.serverSettings["port"]))
+        tcpServer = await asyncio.start_server(this.TCPInit, "0.0.0.0", int(this.serverConfig.port))
         loop = asyncio.get_running_loop()
-        transport, protocol = await loop.create_datagram_endpoint(lambda: UDPProtocol(this), local_addr=("0.0.0.0", int(this.serverSettings["port"])))
+        transport, protocol = await loop.create_datagram_endpoint(lambda: UDPProtocol(this), local_addr=("0.0.0.0", int(this.serverConfig.port)))
         this.protocol = protocol
         this.transport = transport
         try:

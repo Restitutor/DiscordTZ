@@ -6,8 +6,8 @@ from shell.Logger import Logger
 
 
 class ApiKeyDatabase:
-    def __init__(this, config: dict) -> None:
-        this.encryptionKey = config["server"]["apiKeysKey"]
+    def __init__(this, apiKeysKey: str) -> None:
+        this.encryptionKey = apiKeysKey
 
         asyncio.create_task(this._postInit())
 

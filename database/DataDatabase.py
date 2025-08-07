@@ -2,6 +2,7 @@ import os
 
 import mariadb
 
+from config.MariaDBConfig import MariaDBConfig
 from shell.Logger import Logger
 
 
@@ -14,23 +15,23 @@ class Database:
     conn: mariadb.Connection
     tzTableName: str
     tzOverrideTableName: str
-    _connectionDetails: dict
+    _connectionDetails: MariaDBConfig
 
-    def __init__(this, connectionDetails: dict) -> None:
+    def __init__(this, connectionDetails: MariaDBConfig) -> None:
         this._connectionDetails = connectionDetails
 
         this._reconnect()
-        this.tzTableName = connectionDetails.get("tzTableName")
-        this.tzOverrideTableName = connectionDetails.get("overridesTableName")
+        this.tzTableName = connectionDetails.tzTableName
+        this.tzOverrideTableName = connectionDetails.overridesTableName
 
     def _reconnect(this) -> None:
         this.conn = mariadb.connect(
-            database=this._connectionDetails.get("database"),
-            user=this._connectionDetails.get("user"),
-            password=this._connectionDetails.get("password"),
-            host=this._connectionDetails.get("host"),
-            port=int(this._connectionDetails.get("port")),
-            autocommit=bool(this._connectionDetails.get("autocommit")),
+            database=this._connectionDetails.database,
+            user=this._connectionDetails.user,
+            password=this._connectionDetails.password,
+            host=this._connectionDetails.host,
+            port=this._connectionDetails.port,
+            autocommit=this._connectionDetails.autocommit
         )
 
     def set(this, userId: int, timezone: str, alias: str) -> bool:

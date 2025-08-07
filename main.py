@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import asyncio
-import json
 import os
 import shutil
 import subprocess
@@ -11,13 +10,15 @@ import aiofiles
 import discord
 import requests
 
+from config.Config import Config
+from config.MaxmindConfig import MaxmindConfig
 from modules.TZBot import TZBot
 from server.SocketServer import SocketServer
 from shell import Shell
 from shell.Logger import Logger
 
 
-def getGeoIP(conf: dict) -> None:
+def getGeoIP(conf: MaxmindConfig) -> None:
     day = 86400
     dbStats = Path.stat(Path("GeoLite2-City.mmdb")) if Path("GeoLite2-City.mmdb").is_file() else None
     if (dbStats is not None):
@@ -30,7 +31,7 @@ def getGeoIP(conf: dict) -> None:
     Logger.log("Downloading GeoLite2 database...")
     response = requests.get(
         "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz",
-        auth=(conf["maxmind"]["accountId"], conf["maxmind"]["token"]),
+        auth=(str(conf.accountId), conf.token),
         stream=True,
         timeout=3,
     )
@@ -47,15 +48,15 @@ def getGeoIP(conf: dict) -> None:
 
 async def main() -> None:
     async with aiofiles.open("config.json") as f:
-        config = json.loads(await f.read())
+        config: Config = Config.schema().loads(await f.read())
 
     shellTask = asyncio.create_task(Shell.startShell())
-    getGeoIP(config)
+    getGeoIP(config.maxmind)
     serverStarter = asyncio.create_task(SocketServer().start())
 
     client = TZBot(command_prefix="tz!", help_command=None, intents=discord.Intents.all())
     async with client:
-        await client.start(config["token"])
+        await client.start(config.token)
 
     tasks = await asyncio.gather(serverStarter, shellTask, return_exceptions=True)
     for result in tasks:

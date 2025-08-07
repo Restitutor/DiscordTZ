@@ -8,6 +8,7 @@ import geoip2
 from discord.ext import commands
 from geoip2 import database  # noqa: F401
 
+from config.Config import Config
 from database.APIKeyDatabase import ApiKeyDatabase
 from database.DataDatabase import Database
 from shared import Helpers
@@ -17,18 +18,16 @@ from shell.Logger import Logger
 class TZBot(commands.Bot):
     loadedExtensions: list[str] = []
 
-    def __init__(this, **kwargs) -> None:
+    def __init__(this, config: Config, **kwargs) -> None:
         super().__init__(**kwargs)
+        this.config = config
 
         Helpers.tzBot = this
 
-        with open("config.json") as f:
-            this.config: dict = json.loads(f.read())
-
-        this.ownerId = this.config["ownerId"]
+        this.ownerId = this.config.ownerId
         this.linkCodes: dict[str, tuple[str, str]] = {}
-        this.db: Database = Database(this.config.get("mariadbDetails"))
-        this.apiDb = ApiKeyDatabase(this.config)
+        this.db: Database = Database(this.config.mariadbDetails)
+        this.apiDb = ApiKeyDatabase(this.config.server.apiKeysKey)
         this.maxMindDb: geoip2.database.Reader = geoip2.database.Reader("GeoLite2-City.mmdb")
 
         try:
@@ -46,8 +45,8 @@ class TZBot(commands.Bot):
     async def on_connect(this) -> None:
         await this.loadCogs()
 
-        this.errorChannel = await asyncio.create_task(this.fetch_channel(this.config["packetLogs"]["errorChannelId"]))
-        this.successChannel = await asyncio.create_task(this.fetch_channel(this.config["packetLogs"]["successChannelId"]))
+        this.errorChannel = await asyncio.create_task(this.fetch_channel(this.config.packetLogs.errorChannelId))
+        this.successChannel = await asyncio.create_task(this.fetch_channel(this.config.packetLogs.successChannelId))
 
     async def on_ready(this) -> None:
         Logger.success("Discord Bot is online!")
