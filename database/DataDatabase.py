@@ -2,7 +2,7 @@ import os
 
 import mariadb
 
-from config.MariaDBConfig import MariaDBConfig
+from config.Config import MariaDBConfig
 from shell.Logger import Logger
 
 

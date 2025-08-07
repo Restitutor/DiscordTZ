@@ -1,6 +1,6 @@
 import asyncio
 
-from config.ServerConfig import ServerConfig
+from config.Config import ServerConfig
 from database.DataDatabase import Database
 from server.auth.AesKeys import getAesKeyByIp
 from server.EventHandler import EventHandler

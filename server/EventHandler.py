@@ -1,8 +1,6 @@
 import asyncio
 from collections.abc import Callable
 
-from server.requests.AbstractRequests import SimpleRequest
-
 
 class EventHandler:
     def __init__(this) -> None:
@@ -15,10 +13,10 @@ class EventHandler:
     def onSuccess(this, callback: Callable) -> None:
         this.initSuccessCallbacks.append(callback)
 
-    def triggerError(this, instance: SimpleRequest) -> None:
+    def triggerError(this, instance) -> None:  # noqa: ANN001
         for callback in this.initErrorCallbacks:
             asyncio.create_task(callback(instance))
 
-    def triggerSuccess(this, instance: SimpleRequest) -> None:
+    def triggerSuccess(this, instance) -> None:  # noqa: ANN001
         for callback in this.initSuccessCallbacks:
             asyncio.create_task(callback(instance))

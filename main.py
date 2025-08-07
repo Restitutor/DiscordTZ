@@ -50,8 +50,7 @@ async def main() -> None:
         config: Config = Config.schema().loads(await f.read())
 
     shell = Shell()
-    async with shell:
-        shellTask = asyncio.create_task(shell.run_async())
+    shellTask = asyncio.create_task(shell.run_async())
 
     getGeoIP(config.maxmind)
     serverStarter = asyncio.create_task(SocketServer(config.server).start())

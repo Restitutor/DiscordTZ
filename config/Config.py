@@ -38,6 +38,7 @@ class PacketLogsConfig:
     errorChannelId: int
     successChannelId: int
     guildId: int
+    whoToPing: int
 
 
 @dataclass_json
