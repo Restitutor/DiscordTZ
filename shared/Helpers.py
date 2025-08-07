@@ -3,6 +3,7 @@ import random
 import re
 import string
 import subprocess
+from io import BufferedReader
 from pathlib import Path
 
 import aiofiles
@@ -82,7 +83,7 @@ def parseJson(data: str) -> dict | None:
         return None
 
 
-def generateImage(r: str, g: str, b: str) -> bytes:
+def generateImage(r: str, g: str, b: str) -> bytes | BufferedReader:
     if not Path("BMPGen").is_file():
         return b"-1"
     try:
@@ -94,9 +95,11 @@ def generateImage(r: str, g: str, b: str) -> bytes:
         ["/usr/bin/magick", "output.bmp", "-define", "png:compression-level=9", "-define", "png:compression-strategy=1", "output.png"], check=False
     )
     with open("output.png", "rb") as f:
+        buf = f
         Path.unlink(Path("output.bmp"), missing_ok=True)
         Path.unlink(Path("output.png"), missing_ok=True)
-        return f.read()
+
+    return buf
 
 
 tzBot = None

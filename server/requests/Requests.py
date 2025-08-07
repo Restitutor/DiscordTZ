@@ -1,4 +1,6 @@
 import base64
+import subprocess
+from pathlib import Path
 
 import geoip2.errors
 from Crypto.PublicKey import RSA
@@ -244,16 +246,28 @@ class ImageRequest(APIRequest):
             this.g: str = data.get("g", "0")
             this.b: str = data.get("b", "0")
 
-            img = Helpers.generateImage(this.r, this.g, this.b)
-
-            if img == b"-1":
+            if not Path("BMPGen").is_file():
                 this.response = ErrorCode.INTERNAL_SERVER_ERROR
-                this.response[1] = "Feature not available"
-            elif img == b"-2":
+                this.response[1] = "Unsupported feature"
+                this.respond()
+                return
+
+            try:
+                subprocess.run(["./BMPGen", "-r", f"{this.r}", "-g", f"{this.g}", "-b", f"{this.b}"], check=True)  # noqa: S603
+            except subprocess.CalledProcessError:
                 this.response = ErrorCode.BAD_REQUEST
-                this.response[1] = "Bad arguments"
-            else:
+                this.response[1] = "There is a problem with your expression"
+                this.respond()
+                return
+
+            subprocess.run(
+                ["/usr/bin/magick", "output.bmp", "-define", "png:compression-level=9", "-define",
+                 "png:compression-strategy=1", "output.png"], check=False
+            )
+            with open("output.png", "rb") as f:
                 this.response = ErrorCode.OK
-                this.response[1] = base64.encodebytes(img).decode("utf-8")
+                this.response[1] = base64.b64encode(f.read()).decode()
+                Path.unlink(Path("output.bmp"), missing_ok=True)
+                Path.unlink(Path("output.png"), missing_ok=True)
 
         this.respond()
