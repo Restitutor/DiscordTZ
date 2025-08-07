@@ -3,7 +3,6 @@ import asyncio
 from server.auth.AesKeys import getAesKeyByIp
 from server.protocol.Client import Client
 from server.ServerCrypto import AESEncrypt, RSAEncrypt
-from server.SocketServer import SocketServer
 
 
 class UDPClient(Client):
@@ -19,7 +18,7 @@ class UDPClient(Client):
 
 
 class UDPProtocol(asyncio.DatagramProtocol):
-    def __init__(this, server: SocketServer) -> None:
+    def __init__(this, server) -> None: # noqa: ANN001
         this.server = server
 
     def connection_made(this, transport: asyncio.transports.DatagramTransport) -> None:
