@@ -39,7 +39,7 @@ class TZBot(commands.Bot):
         this.success: discord.Embed = discord.Embed(title="**Success!**", description="The operation was successful!", color=discord.Color.green())
         this.fail: discord.Embed = discord.Embed(
             title="**Something went wrong.**", description="There was an error in the operation.", color=discord.Color.red()
-        )  # noqa: E501
+        )
 
     async def on_connect(this) -> None:
         await this.loadCogs()

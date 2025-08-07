@@ -10,8 +10,7 @@ import aiofiles
 import discord
 import requests
 
-from config.Config import Config
-from config.MaxmindConfig import MaxmindConfig
+from config.Config import Config, MaxmindConfig
 from modules.TZBot import TZBot
 from server.SocketServer import SocketServer
 from shell import Shell
@@ -52,9 +51,9 @@ async def main() -> None:
 
     shellTask = asyncio.create_task(Shell.startShell())
     getGeoIP(config.maxmind)
-    serverStarter = asyncio.create_task(SocketServer().start())
+    serverStarter = asyncio.create_task(SocketServer(config.server).start())
 
-    client = TZBot(command_prefix="tz!", help_command=None, intents=discord.Intents.all())
+    client = TZBot(config, command_prefix="tz!", help_command=None, intents=discord.Intents.all())
     async with client:
         await client.start(config.token)
 

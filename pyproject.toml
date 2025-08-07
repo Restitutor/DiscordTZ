@@ -66,6 +66,8 @@ ignore = [
     "C901",     # function too complex
     "COM812",   # Trailing comma
     "DTZ005",   # datetime without timezone
+    "ERA001",   # Commented out code
+    "FBT003",   # Boolean positional argument
     "INP001",   # __init__.py in packages
     "N802",     # lowercase function names
     "N803",     # lowercase arg names
@@ -73,7 +75,6 @@ ignore = [
     "N806",     # lowercase var names
     "N815",     # mixCaseOmg
     "N816",     # camelCase
-    "PLC0414",  # If statements in parentheses
     "PLR0912",  # Too many branches
     "PTH123",   # Path.open()
     "RUF006",   # Storing return value of a function
