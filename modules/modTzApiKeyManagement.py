@@ -1,5 +1,3 @@
-import asyncio
-
 import discord
 from discord.ext import commands
 
@@ -13,7 +11,6 @@ class TzApiKeyManagement(commands.Cog):
 
     def __init__(this, client: TZBot) -> None:
         this.client = client
-        asyncio.create_task(this.client.sync_commands())
 
     @apiGroup.command(name="requestkey", description="Request a Timezone API key")
     async def request(this, ctx: discord.ApplicationContext) -> None:

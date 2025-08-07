@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 
 import discord
@@ -34,7 +33,6 @@ class TzCommands(commands.Cog):
 
     def __init__(this, client: TZBot) -> None:
         this.client = client
-        asyncio.create_task(this.client.sync_commands())
 
     @timezoneGroup.command(name="set", description="Sets your timezone to the correct one.")
     async def tzSet(

@@ -1,11 +1,12 @@
 import asyncio
 import contextlib
 import json
-from pathlib import Path
+import pathlib
 
 import aiofiles
 import discord
 import geoip2
+from discord import ExtensionAlreadyLoaded, ExtensionFailed, ExtensionNotFound, ExtensionNotLoaded, NoEntryPointError
 from discord.ext import commands
 from geoip2 import database  # noqa: F401
 
@@ -17,7 +18,7 @@ from shell.Logger import Logger
 
 
 class TZBot(commands.Bot):
-    loadedExtensions: list[str] = []
+    loadedModules: list[str] = []
 
     def __init__(this, config: Config, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -42,6 +43,7 @@ class TZBot(commands.Bot):
             title="**Something went wrong.**", description="There was an error in the operation.", color=discord.Color.red()
         )
 
+    # WSS shit
     async def on_connect(this) -> None:
         await this.loadCogs()
 
@@ -51,19 +53,70 @@ class TZBot(commands.Bot):
     async def on_ready(this) -> None:
         Logger.success("Discord Bot is online!")
 
+    # Modules shit
+    def getAvailableModules(this) -> list[str]:
+        return [file.stem[3:] for file in pathlib.Path("./modules").glob("mod*.py") if file.stem.startswith("mod")]
+
+    def getLoadedModules(this) -> list[str]:
+        return this.loadedModules
+
+    def getUnloadedModules(this) -> list[str]:
+        return [module for module in this.getAvailableModules() if module not in this.loadedModules]
+
+    def unloadModules(this, modules: list[str]) -> None:
+        for module in modules:
+            if module not in this.getLoadedModules():
+                asyncio.create_task(this.sync_commands(force=True))
+                raise ExtensionNotLoaded(f"Module {module} is not loaded")
+
+            try:
+                this.unload_extension(f"modules.mod{module}")
+                this.loadedModules.remove(module)
+                Logger.success(f"Module {module} unloaded!")
+            except (ExtensionNotFound, ExtensionNotLoaded) as e:
+                Logger.error(f"Failed to unload module {module}: {e}")
+                raise e  # noqa: TRY201
+            finally:
+                asyncio.create_task(this.sync_commands(force=True))
+
+    def loadModules(this, modules: list[str]) -> None:
+        for module in modules:
+            if module not in this.getUnloadedModules():
+                asyncio.create_task(this.sync_commands(force=True))
+                raise ExtensionAlreadyLoaded(f"Module {module} is loaded")
+
+            try:
+                this.load_extension(f"modules.mod{module}")
+                this.loadedModules.append(module)
+                Logger.success(f"Module {module} loaded!")
+            except (ExtensionNotFound, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionFailed) as e:
+                Logger.error(f"Failed to load module {module}: {e}")
+                raise e  # noqa: TRY201
+            finally:
+                asyncio.create_task(this.sync_commands(force=True))
+
+    def reloadModules(this, modules: list[str]) -> None:
+        for module in modules:
+            if module not in this.getLoadedModules():
+                asyncio.create_task(this.sync_commands(force=True))
+                raise ExtensionNotLoaded(f"Module {module} is not loaded")
+
+            try:
+                this.reload_extension(f"modules.mod{module}")
+                Logger.success(f"Module {module} reloaded!")
+            except (ExtensionNotFound, ExtensionNotLoaded, NoEntryPointError, ExtensionFailed) as e:
+                Logger.error(f"Failed to reload module {module}: {e}")
+                raise e  # noqa: TRY201
+            finally:
+                asyncio.create_task(this.sync_commands(force=True))
+
     async def loadCogs(this) -> None:
-        for file in Path.iterdir(Path("./modules")):
-            if file.name.startswith("mod") and file.name.endswith(".py"):
-                this.loadedExtensions.extend(this.load_extension(f"modules.{file.name[:-3]}"))
+        this.loadedModules.extend(
+            [ext.split(".")[1][3:] for module in this.getAvailableModules() for ext in this.load_extension(f"modules.mod{module}")]
+        )
+        Logger.success(f"Modules {', '.join(this.loadedModules)} loaded!")
 
-        this.loadedExtensions = [extension.replace("modules.mod", "") for extension in this.loadedExtensions]
-        Logger.success(f"Modules {', '.join(this.loadedExtensions)} loaded!")
-
-    async def removeCode(this, delay: int, code: str) -> None:
-        await asyncio.sleep(delay * 60)
-        with contextlib.suppress(KeyError):
-            this.linkCodes.pop(code)
-
+    # Persistent UI shit
     async def addOwner(this, userId: int) -> None:
         if userId in this.dialogOwners:
             return
@@ -77,3 +130,9 @@ class TZBot(commands.Bot):
             this.dialogOwners.remove(userId)
             async with aiofiles.open("dialogOwners.json", "w") as f:
                 await f.write(json.dumps(this.dialogOwners))
+
+    # Verification code invalidifier
+    async def removeCode(this, delay: int, code: str) -> None:
+        await asyncio.sleep(delay * 60)
+        with contextlib.suppress(KeyError):
+            this.linkCodes.pop(code)

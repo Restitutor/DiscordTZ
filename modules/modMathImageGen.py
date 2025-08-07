@@ -5,14 +5,11 @@ import discord
 from discord.ext import commands
 
 from modules.TZBot import TZBot
-from shared import Helpers
-from shell.Logger import Logger
 
 
 class MathImageGen(commands.Cog):
     def __init__(this, client: TZBot) -> None:
         this.client = client
-        asyncio.create_task(this.client.sync_commands())
 
     @discord.slash_command(name="generate", description="Generate an image using math!")
     @commands.cooldown(1, 10, commands.BucketType.user)

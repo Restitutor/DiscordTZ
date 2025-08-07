@@ -1,4 +1,3 @@
-import asyncio
 from textwrap import dedent
 
 import aiofiles
@@ -14,7 +13,6 @@ class Help(commands.Cog):
 
     def __init__(this, client: TZBot) -> None:
         this.client = client
-        asyncio.create_task(this.client.sync_commands())
         with open("help.json") as f:
             this.commandHelp: list[Module] = Module.schema().loads(f.read(), many=True)
 
@@ -80,12 +78,8 @@ class Help(commands.Cog):
                         continue
 
                     for command in cmdGroup.commands:
-                        if command.name != commandname:
-                            try:
-                                if command.name != commandname.split(" ")[1]:
-                                    continue
-                            except Exception:  # noqa: BLE001
-                                continue
+                        if command.name != commandname and command.name != commandname.split(" ")[1]:
+                            continue
 
                         embed.add_field(
                             name="**Command Info**",

@@ -1,3 +1,4 @@
+import asyncio
 import os
 import stat
 import sys
@@ -5,6 +6,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
+from discord import ExtensionAlreadyLoaded, ExtensionFailed, ExtensionNotFound, ExtensionNotLoaded, NoEntryPointError
+
+from modules.TZBot import TZBot  # noqa: TC001
+from shared import Helpers
 from shell.Logger import Logger
 
 
@@ -39,10 +44,10 @@ class CommandContext:
         this.variables = {}
 
     def log(this, message: str) -> None:
-        Logger.log(message)
+        this.shell.log(message)
 
-    def error(self, message: str) -> None:
-        Logger.error(message)
+    def error(this, message: str) -> None:
+        this.shell.log("[ERROR] " + message)
 
 
 # Built-in commands
@@ -94,17 +99,6 @@ class RestartCommand(Command):
         return CommandResult(True)
 
 
-class ClearCommand(Command):
-    def __init__(this) -> None:
-        super().__init__("clear", "Clear the terminal/log area", ["cls"])
-
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
-        if ctx.shell and hasattr(ctx.shell, "logWindow"):
-            ctx.shell.logWindow.buffer.text = ""
-            ctx.shell.logLines = []
-        return CommandResult(True, "Screen cleared")
-
-
 class HelpCommand(Command):
     def __init__(this, registry: "CommandRegistry") -> None:
         super().__init__("help", "Show help for commands", ["h", "?"])
@@ -139,7 +133,6 @@ class CommandRegistry:
             ExitCommand(),
             EchoCommand(),
             RestartCommand(),
-            ClearCommand(),
         ]
 
         for cmd in builtinCommands:
@@ -186,15 +179,15 @@ class CommandRegistry:
             return CommandResult(True)
 
         parts = commandLine.strip().split()
-        command_name = parts[0]
+        commandName = parts[0]
         args = parts[1:] if len(parts) > 1 else []
 
-        command = this.getCommand(command_name)
+        command = this.getCommand(commandName)
         if not command:
-            return CommandResult(False, f"Unknown command: {command_name}")
+            return CommandResult(False, f"Unknown command: {commandName}")
 
         if not command.validateArgs(args):
-            return CommandResult(False, f"Invalid arguments for {command_name}")
+            return CommandResult(False, f"Invalid arguments for {commandName}")
 
         try:
             return command.execute(args, context)
@@ -210,3 +203,109 @@ def createCommandSystem(shellInstance=None) -> tuple[CommandRegistry, CommandCon
     # registry.register(DateCommand())
 
     return registry, context
+
+
+# Additional commands
+class Reload(Command):
+    def __init__(this) -> None:
+        super().__init__("reload", "Reloads a Discord bot module")
+
+    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+        client: TZBot = Helpers.tzBot
+
+        for arg in args:
+            try:
+                client.reload_extension(f"modules.mod{arg}")
+                Logger.success(f"Module {arg} reloaded!")
+            except (ExtensionNotFound, ExtensionNotLoaded, NoEntryPointError, ExtensionFailed) as e:
+                Logger.error(f"Failed to reload module {arg}: {e}")
+
+        asyncio.create_task(client.sync_commands())
+        return CommandResult(True)
+
+    def validateArgs(self, args: list[str]) -> bool:
+        client: TZBot = Helpers.tzBot
+        if len(args) < 1:
+            return False
+
+        toReload = [module for module in args if module in client.getLoadedModules()]
+        return len(toReload) == len(args)
+
+
+class Load(Command):
+    def __init__(this) -> None:
+        super().__init__("load", "Loads a Discord bot module")
+
+    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+        client: TZBot = Helpers.tzBot
+
+        try:
+            client.loadModules(args)
+        except (ExtensionNotFound, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionFailed) as e:
+            Logger.error(e)
+
+        asyncio.create_task(client.sync_commands())
+        return CommandResult(True)
+
+    def validateArgs(self, args: list[str]) -> bool:
+        client: TZBot = Helpers.tzBot
+        if len(args) < 1:
+            return False
+
+        toLoad = [module for module in args if module in client.getUnloadedModules()]
+        return len(toLoad) == len(args)
+
+
+class Unload(Command):
+    def __init__(this) -> None:
+        super().__init__("unload", "Loads a Discord bot module")
+
+    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+        client: TZBot = Helpers.tzBot
+
+        try:
+            client.unloadModules(args)
+        except (ExtensionNotFound, ExtensionNotLoaded) as e:
+            Logger.error(e)
+
+        return CommandResult(True)
+
+    def validateArgs(self, args: list[str]) -> bool:
+        client: TZBot = Helpers.tzBot
+        if len(args) < 1:
+            return False
+
+        toUnload = [module for module in args if module in client.getLoadedModules()]
+        return len(toUnload) == len(args)
+
+
+class ModList(Command):
+    def __init__(this) -> None:
+        super().__init__("lsmod", "Loads a Discord bot module", aliases=["ml", "ls"])
+
+    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+        client: TZBot = Helpers.tzBot
+        ctx.log("Module Status:")
+        for module in client.getAvailableModules():
+            ctx.log(f"{module}: {'Loaded' if module in client.getLoadedModules() else 'Unloaded'}")
+
+        return CommandResult(True)
+
+    def validateArgs(this, args: list[str]) -> bool:
+        return len(args) == 0
+
+
+class ForceSync(Command):
+    def __init__(this) -> None:
+        super().__init__("sync", "Loads a Discord bot module")
+
+    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+        client: TZBot = Helpers.tzBot
+
+        asyncio.create_task(client.sync_commands(force=True))
+        Logger.log("Force sync started.")
+
+        return CommandResult(True)
+
+    def validateArgs(this, args: list[str]) -> bool:
+        return len(args) == 0

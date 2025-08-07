@@ -19,11 +19,14 @@ async def createBasicEmbed(request: SimpleRequest, template: discord.Embed) -> t
 
     if request.city is not None:
         country = request.city.country.iso_code
+
     elif request.client.ipAddress[0] == "127.0.0.1":
         with aiofiles.open("/etc/hostname") as f:
             country = f.read().capitalize()
+
     elif request.client.ipAddress[0] in hosts:
         country = hosts[request.client.ipAddress[0]].capitalize()
+
     else:
         country = "Local"
 
@@ -44,6 +47,7 @@ async def createBasicEmbed(request: SimpleRequest, template: discord.Embed) -> t
     maxDataEmbedLen = 900
     if len(requestData) <= maxDataEmbedLen:
         template.add_field(name="Request Data", value=f"```{requestData}```", inline=False)
+
     else:
         template.add_field(name="Request Data", value="Request is included in the file below due to its size.", inline=False)
         async with aiofiles.open("request.txt", "w") as file:
@@ -55,6 +59,7 @@ async def createBasicEmbed(request: SimpleRequest, template: discord.Embed) -> t
 
     if len(str(response)) <= maxDataEmbedLen:
         template.add_field(name="Response Data", value=f"```{response!s}```", inline=False)
+
     else:
         template.add_field(name="Response Data", value="Response is included in the file below due to its size.", inline=False)
 
@@ -85,6 +90,7 @@ class ServerLogging(commands.Cog):
         lock = "🔒" if request.client.encrypt else ""
         embed: discord.Embed = discord.Embed(title=f"{lock} **Error** {lock}", color=discord.Color.red())
         embed, fileSendList = await createBasicEmbed(request, embed)
+
         if embed is None:
             return
 

@@ -67,6 +67,7 @@ ignore = [
     "COM812",   # Trailing comma
     "DTZ005",   # datetime without timezone
     "ERA001",   # Commented out code
+    "EM102",    # error message with no variables
     "FBT003",   # Boolean positional argument
     "INP001",   # __init__.py in packages
     "N802",     # lowercase function names
@@ -83,6 +84,7 @@ ignore = [
     "S112",     # Logging exceptions
     "S606",     # Starting process without a shell
     "SLF001",   # Private member accessed
+    "TRY003",   # Long exception message
     "TRY300",   # Use else block instead of catch
 ]
 fixable = ["ALL"]

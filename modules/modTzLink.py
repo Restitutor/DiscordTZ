@@ -1,5 +1,3 @@
-import asyncio
-
 import discord
 from discord.ext import commands
 
@@ -9,7 +7,6 @@ from modules.TZBot import TZBot
 class TzLink(commands.Cog):
     def __init__(this, client: TZBot) -> None:
         this.client = client
-        asyncio.create_task(this.client.sync_commands())
 
     @discord.slash_command(name="link", description="Links you to your Minecraft account.")
     async def link(this, ctx: discord.ApplicationContext, code: discord.Option(str, "Code that was generated for you in Minecraft.")) -> None:
