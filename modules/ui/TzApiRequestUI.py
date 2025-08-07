@@ -138,7 +138,7 @@ class TzApiRequestUI(discord.ui.View):
 
         await ctx.message.edit(view=this)
 
-        apiChannel: discord.Thread = await ctx.client.fetch_channel(this.client.config["server"]["apiApproveChannelId"])
+        apiChannel: discord.Thread = await ctx.client.fetch_channel(this.client.config.server.apiApproveChannelId)
         embed: discord.Embed = discord.Embed(
             color=discord.Color.darker_grey(),
             title="**API Key Requested**",

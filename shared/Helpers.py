@@ -5,15 +5,17 @@ import string
 import subprocess
 from pathlib import Path
 
+import aiofiles
+
 from shell.Logger import Logger
 
 
-def getHosts() -> dict[str, str]:
+async def getHosts() -> dict[str, str]:
     pattern = re.compile(r"\b((?:10|192\.168|172\.(?:1[6-9]|2[0-9]|3[0-1]))(?:\.\d{1,3}){3})\s+(\S+)", re.IGNORECASE)
 
     try:
-        with open("/etc/hosts") as f:
-            content = f.read()
+        async with aiofiles.open("/etc/hosts") as f:
+            content = await f.read()
     except FileNotFoundError:
         Logger.error("Hosts file not found.")
         return {}

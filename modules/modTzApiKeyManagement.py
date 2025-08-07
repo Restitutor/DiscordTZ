@@ -18,7 +18,7 @@ class TzApiKeyManagement(commands.Cog):
     @apiGroup.command(name="requestkey", description="Request a Timezone API key")
     async def request(this, ctx: discord.ApplicationContext) -> None:
         view = TzApiRequestUI(this.client, ctx.user.id)
-        this.client.addOwner(ctx.user.id)
+        await this.client.addOwner(ctx.user.id)
 
         embed: discord.Embed = discord.Embed(
             color=discord.Color.darker_grey(),

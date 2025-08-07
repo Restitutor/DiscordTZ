@@ -3,6 +3,7 @@ import contextlib
 import json
 from pathlib import Path
 
+import aiofiles
 import discord
 import geoip2
 from discord.ext import commands
@@ -63,16 +64,16 @@ class TZBot(commands.Bot):
         with contextlib.suppress(KeyError):
             this.linkCodes.pop(code)
 
-    def addOwner(this, userId: int) -> None:
+    async def addOwner(this, userId: int) -> None:
         if userId in this.dialogOwners:
             return
 
         this.dialogOwners.append(userId)
-        with open("dialogOwners.json", "w") as f:
-            f.write(json.dumps(this.dialogOwners))
+        async with aiofiles.open("dialogOwners.json", "w") as f:
+            await f.write(json.dumps(this.dialogOwners))
 
-    def removeOwner(this, userId: int) -> None:
+    async def removeOwner(this, userId: int) -> None:
         with contextlib.suppress(ValueError):
             this.dialogOwners.remove(userId)
-            with open("dialogOwners.json", "w") as f:
-                f.write(json.dumps(this.dialogOwners))
+            async with aiofiles.open("dialogOwners.json", "w") as f:
+                await f.write(json.dumps(this.dialogOwners))

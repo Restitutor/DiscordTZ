@@ -42,7 +42,7 @@ class DecisionActionRow(discord.ui.View):
         acceptBtn = this.get_item("ACCEPT")
         rejectBtn = this.get_item("REJECT")
 
-        devlogRole: discord.Role = await ctx.guild._fetch_role(this.client.config["server"]["devlogRoleId"])
+        devlogRole: discord.Role = await ctx.guild._fetch_role(this.client.config.server.devlogRoleId)
         if devlogRole is None:
             Logger.error("Devlog role not found!")
 
