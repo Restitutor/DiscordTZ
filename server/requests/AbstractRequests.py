@@ -3,6 +3,7 @@ import json
 import random
 
 import geoip2
+from geoip2 import errors  # noqa: F401
 from geoip2.models import City
 
 from server.Api import ApiKey, ApiPermissions
