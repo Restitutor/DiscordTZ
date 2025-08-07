@@ -13,8 +13,8 @@ import requests
 from config.Config import Config, MaxmindConfig
 from modules.TZBot import TZBot
 from server.SocketServer import SocketServer
-from shell.Shell import Shell
 from shell.Logger import Logger
+from shell.Shell import Shell
 
 
 def getGeoIP(conf: MaxmindConfig) -> None:
