@@ -37,10 +37,7 @@ class TZBot(commands.Bot):
             this.dialogOwners: list[int] = []
 
         this.success: discord.Embed = discord.Embed(title="**Success!**", description="The operation was successful!", color=discord.Color.green())
-
-        this.fail: discord.Embed = discord.Embed(
-            title="**Something went wrong.**", description="There was an error in the operation.", color=discord.Color.red()
-        )
+        this.fail: discord.Embed = discord.Embed(title="**Something went wrong.**", description="There was an error in the operation.", color=discord.Color.red()) # noqa: E501
 
     async def on_connect(this) -> None:
         await this.loadCogs()
@@ -50,7 +47,6 @@ class TZBot(commands.Bot):
 
     async def on_ready(this) -> None:
         Logger.success("Discord Bot is online!")
-        Helpers.ownerId = (await this.application_info()).owner.id
 
     async def loadCogs(this) -> None:
         for file in Path.iterdir(Path("./modules")):
@@ -66,6 +62,9 @@ class TZBot(commands.Bot):
             this.linkCodes.pop(code)
 
     def addOwner(this, userId: int) -> None:
+        if(userId in this.dialogOwners):
+            return
+
         this.dialogOwners.append(userId)
         with open("dialogOwners.json", "w") as f:
             f.write(json.dumps(this.dialogOwners))
