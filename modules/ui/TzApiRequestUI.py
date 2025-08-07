@@ -79,7 +79,7 @@ class TzApiRequestUI(discord.ui.View):
         custom_id="PERMSELECT",
     )
     async def permsSelect(this, selection: discord.ui.Select[list[str]], ctx: discord.Interaction) -> None:
-        if (ctx.user.id != this.dialogOwner):
+        if ctx.user.id != this.dialogOwner:
             await ctx.response.send_message("You can't do that!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to mess with {ctx.guild.get_member(this.dialogOwner).display_name}'s dialog!")
             return
@@ -99,7 +99,7 @@ class TzApiRequestUI(discord.ui.View):
         custom_id="DURATIONSELECT",
     )
     async def durationSelect(this, selection: discord.ui.Select[str], ctx: discord.Interaction) -> None:
-        if (ctx.user.id != this.dialogOwner):
+        if ctx.user.id != this.dialogOwner:
             await ctx.response.send_message("You can't do that!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to mess with {ctx.guild.get_member(this.dialogOwner).display_name}'s dialog!")
             return
@@ -113,7 +113,7 @@ class TzApiRequestUI(discord.ui.View):
         custom_id="SUBMIT",
     )
     async def buttonHandler(this, button: discord.ui.Button, ctx: discord.Interaction) -> None:  # noqa: ARG002
-        if (ctx.user.id != this.dialogOwner):
+        if ctx.user.id != this.dialogOwner:
             await ctx.response.send_message("You can't do that!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to mess with {(await ctx.client.fetch_user(this.dialogOwner)).name}'s dialog!")
             return

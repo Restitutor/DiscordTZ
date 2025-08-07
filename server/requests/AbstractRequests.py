@@ -36,12 +36,12 @@ class SimpleRequest:
         except geoip2.errors.AddressNotFoundError:
             this.city = None
 
-        if (this.__class__.__name__ == "SimpleRequest"):
+        if this.__class__.__name__ == "SimpleRequest":
             this.client.encrypt = False
             this.respond()
 
     def respond(this) -> None:
-        if (this.__class__.__name__ == "SimpleRequest"):
+        if this.__class__.__name__ == "SimpleRequest":
             this.response = ErrorCode.BAD_REQUEST
             this.client.encrypt = False
 
@@ -54,7 +54,7 @@ class SimpleRequest:
 class PartiallyEncryptedRequest(SimpleRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data)
-        if (not client.encrypt and not Helpers.isLocalSubnet(this.client.ipAddress[0])):
+        if not client.encrypt and not Helpers.isLocalSubnet(this.client.ipAddress[0]):
             this.response = ErrorCode.BAD_REQUEST
             this.response[1] = "Bad Request, Unencrypted"
 
@@ -62,7 +62,7 @@ class PartiallyEncryptedRequest(SimpleRequest):
 class EncryptedRequest(PartiallyEncryptedRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data)
-        if (this.response is None and not this.client.encrypt):
+        if this.response is None and not this.client.encrypt:
             this.response = ErrorCode.BAD_REQUEST
             this.response[1] = "Bad Request, Unencrypted"
 
@@ -70,20 +70,20 @@ class EncryptedRequest(PartiallyEncryptedRequest):
 class APIRequest(PartiallyEncryptedRequest):
     def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data)
-        if (this.response is None):
+        if this.response is None:
             this.rawApiKey = this.headers.get("apiKey")
-            if (this.rawApiKey is None):
+            if this.rawApiKey is None:
                 this.response = ErrorCode.FORBIDDEN
                 return
 
-            if (not Helpers.tzBot.apiDb.isValidKey(this.rawApiKey)):
+            if not Helpers.tzBot.apiDb.isValidKey(this.rawApiKey):
                 Logger.error("Key isn't in the DB")
                 this.response = ErrorCode.FORBIDDEN
                 return
 
             this.apiKey = ApiKey.fromDbForm(this.rawApiKey)
 
-            if (not this.apiKey.hasPermissions(*requiredPerms)):
+            if not this.apiKey.hasPermissions(*requiredPerms):
                 Logger.error("No permissions")
                 this.response = ErrorCode.FORBIDDEN
                 return
@@ -92,27 +92,27 @@ class APIRequest(PartiallyEncryptedRequest):
 class UserIdRequest(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data, *requiredPerms)
-        if (this.response is None):
+        if this.response is None:
             this.userId = int(data.get("userId")) if str(data.get("userId")).isnumeric() else None
-            if (this.userId is None):
+            if this.userId is None:
                 this.response = ErrorCode.BAD_REQUEST
 
 
 class AliasRequest(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data, *requiredPerms)
-        if (this.response is None):
+        if this.response is None:
             this.alias = str(data.get("alias"))
-            if (this.alias is None):
+            if this.alias is None:
                 this.response = ErrorCode.BAD_REQUEST
 
 
 class UUIDRequest(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data, *requiredPerms)
-        if (this.response is None):
+        if this.response is None:
             this.uuid = data.get("uuid")
-            if (this.uuid is None or not Helpers.isUUID(this.uuid)):
+            if this.uuid is None or not Helpers.isUUID(this.uuid):
                 this.response = ErrorCode.BAD_REQUEST
                 this.response[1] = "Invalid UUID"
 
@@ -168,9 +168,9 @@ async def chinaResponse(request: SimpleRequest) -> None:
 
 
 async def sendResponse(request: SimpleRequest) -> None:
-    if (request.city is not None and request.city.country.iso_code in {"SG", "CN", "MO", "HK"}):
+    if request.city is not None and request.city.country.iso_code in {"SG", "CN", "MO", "HK"}:
         await chinaResponse(request)
-    elif (request.response[0] == ErrorCode.OK[0]):
+    elif request.response[0] == ErrorCode.OK[0]:
         request.commonEventHandler.triggerSuccess(request)
     else:
         request.commonEventHandler.triggerError(request)

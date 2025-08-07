@@ -9,6 +9,7 @@ class MaxmindConfig:
     accountId: int
     token: str
 
+
 @dataclass_json
 @dataclass
 class MariaDBConfig:
@@ -21,6 +22,7 @@ class MariaDBConfig:
     tzTableName: str
     overridesTableName: str
 
+
 @dataclass_json
 @dataclass
 class ServerConfig:
@@ -28,6 +30,7 @@ class ServerConfig:
     apiKeysKey: str
     apiApproveChannelId: int
     devlogRoleId: int
+
 
 @dataclass_json
 @dataclass

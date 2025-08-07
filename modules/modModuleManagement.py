@@ -16,7 +16,7 @@ class ModuleManagement(commands.Cog):
         asyncio.create_task(this.client.sync_commands())
 
     async def getModules(this, ctx: discord.AutocompleteContext = None) -> list[str]:
-        if (ctx is not None and not await ctx.bot.is_owner(ctx.interaction.user)):
+        if ctx is not None and not await ctx.bot.is_owner(ctx.interaction.user):
             return []
         results: list[str] = [
             file.name[:-3] for file in Path.iterdir(Path("./modules")) if (file.name.startswith("mod") and file.name.endswith(".py"))
@@ -29,20 +29,20 @@ class ModuleManagement(commands.Cog):
         filtered: list[str] = []
         loaded = [module.replace("modules.mod", "") for module in list(this.client.extensions.keys())]
         for result in results:
-            if (result.replace("mod", "") in loaded):
+            if result.replace("mod", "") in loaded:
                 continue
             filtered.append(result.replace("mod", ""))
 
-        if (ctx is not None and ctx.value not in {None, ""}):
+        if ctx is not None and ctx.value not in {None, ""}:
             filtered = [entry for entry in filtered if entry.lower().startswith(ctx.value.lower())]
         return filtered
 
     async def getLoadedModules(this, ctx: discord.AutocompleteContext = None) -> list[str]:
-        if (ctx is not None and not await ctx.bot.is_owner(ctx.interaction.user)):
+        if ctx is not None and not await ctx.bot.is_owner(ctx.interaction.user):
             return []
 
         loaded = [module.replace("modules.mod", "") for module in list(this.client.extensions.keys())]
-        if (ctx is not None and ctx.value not in {None, ""}):
+        if ctx is not None and ctx.value not in {None, ""}:
             loaded = [entry for entry in loaded if entry.lower().startswith(ctx.value.lower())]
 
         return loaded
@@ -52,7 +52,7 @@ class ModuleManagement(commands.Cog):
     async def loadModule(
         this, ctx: discord.ApplicationContext, modulename: discord.Option(str, "The module you want to load", autocomplete=getUnloadedModules)
     ) -> None:
-        if (modulename not in await this.getUnloadedModules()):
+        if modulename not in await this.getUnloadedModules():
             await ctx.response.send_message(f"Module {modulename} doesn't exist!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to load {modulename}, which doesn't exist!")
             return
@@ -67,7 +67,7 @@ class ModuleManagement(commands.Cog):
     async def unloadModule(
         this, ctx: discord.ApplicationContext, modulename: discord.Option(str, "The module you want to unload", autocomplete=getLoadedModules)
     ) -> None:
-        if (modulename not in await this.getLoadedModules()):
+        if modulename not in await this.getLoadedModules():
             await ctx.response.send_message(f"Module {modulename} doesn't exist!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to unload {modulename}, which doesn't exist!")
             return
@@ -82,7 +82,7 @@ class ModuleManagement(commands.Cog):
     async def reloadModule(
         this, ctx: discord.ApplicationContext, modulename: discord.Option(str, "The module you want to reload", autocomplete=getLoadedModules)
     ) -> None:
-        if (modulename not in await this.getLoadedModules()):
+        if modulename not in await this.getLoadedModules():
             await ctx.response.send_message(f"Module {modulename} doesn't exist!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to reload {modulename}, which doesn't exist!")
             return

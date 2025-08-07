@@ -59,14 +59,14 @@ def log(message: object) -> None:
 
 def parseAndExec(userInput: str) -> None:
     parts = userInput.strip().split()
-    if (not parts):
+    if not parts:
         return
 
     command = parts[0].lower()
     args = parts[1:]
 
     handler = command_registry.get(command)
-    if (handler):
+    if handler:
         handler(args)
     else:
         log(f"Unknown command: '{command}'")

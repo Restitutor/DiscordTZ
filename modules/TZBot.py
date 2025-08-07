@@ -37,7 +37,9 @@ class TZBot(commands.Bot):
             this.dialogOwners: list[int] = []
 
         this.success: discord.Embed = discord.Embed(title="**Success!**", description="The operation was successful!", color=discord.Color.green())
-        this.fail: discord.Embed = discord.Embed(title="**Something went wrong.**", description="There was an error in the operation.", color=discord.Color.red()) # noqa: E501
+        this.fail: discord.Embed = discord.Embed(
+            title="**Something went wrong.**", description="There was an error in the operation.", color=discord.Color.red()
+        )  # noqa: E501
 
     async def on_connect(this) -> None:
         await this.loadCogs()
@@ -50,7 +52,7 @@ class TZBot(commands.Bot):
 
     async def loadCogs(this) -> None:
         for file in Path.iterdir(Path("./modules")):
-            if (file.name.startswith("mod") and file.name.endswith(".py")):
+            if file.name.startswith("mod") and file.name.endswith(".py"):
                 this.loadedExtensions.extend(this.load_extension(f"modules.{file.name[:-3]}"))
 
         this.loadedExtensions = [extension.replace("modules.mod", "") for extension in this.loadedExtensions]
@@ -62,7 +64,7 @@ class TZBot(commands.Bot):
             this.linkCodes.pop(code)
 
     def addOwner(this, userId: int) -> None:
-        if(userId in this.dialogOwners):
+        if userId in this.dialogOwners:
             return
 
         this.dialogOwners.append(userId)

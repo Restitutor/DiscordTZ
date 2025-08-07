@@ -16,7 +16,7 @@ from shell.Logger import Logger
 class HelloRequest(SimpleRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data)
-        if ("rsaPubKey" in data):
+        if "rsaPubKey" in data:
             try:
                 pubKey = RSA.importKey(data["rsaPubKey"])
                 this.client.rsaKey = pubKey
@@ -39,10 +39,10 @@ class HelloRequest(SimpleRequest):
 class TimeZoneRequest(UserIdRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.DISCORD_ID)
-        if (this.response is None):
+        if this.response is None:
             this.response = ErrorCode.OK
             this.response[1] = Helpers.tzBot.db.getTimeZone(this.userId)
-            if (this.response[1] in {"", None}):
+            if this.response[1] in {"", None}:
                 this.response = ErrorCode.NOT_FOUND
 
         this.respond()
@@ -51,10 +51,10 @@ class TimeZoneRequest(UserIdRequest):
 class AliasFromUserRequest(UserIdRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.DISCORD_ID, ApiPermissions.TZBOT_ALIAS)
-        if (this.response is None):
+        if this.response is None:
             this.response = ErrorCode.OK
             this.response[1] = Helpers.tzBot.db.getAlias(this.userId)
-            if (this.response[1] in {"", None}):
+            if this.response[1] in {"", None}:
                 this.response = ErrorCode.NOT_FOUND
 
         this.respond()
@@ -63,10 +63,10 @@ class AliasFromUserRequest(UserIdRequest):
 class UserFromAliasRequest(AliasRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.DISCORD_ID, ApiPermissions.TZBOT_ALIAS)
-        if (this.response is None):
+        if this.response is None:
             this.response = ErrorCode.OK
             this.response[1] = Helpers.tzBot.db.getUserByAlias(this.alias)
-            if (this.response[1] in {"", None}):
+            if this.response[1] in {"", None}:
                 this.response = ErrorCode.NOT_FOUND
 
         this.respond()
@@ -75,10 +75,10 @@ class UserFromAliasRequest(AliasRequest):
 class TimeZoneFromAliasRequest(AliasRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.TZBOT_ALIAS)
-        if (this.response is None):
+        if this.response is None:
             this.response = ErrorCode.OK
             this.response[1] = Helpers.tzBot.db.getTimeZoneByAlias(this.alias)
-            if (this.response[1] in {"", None}):
+            if this.response[1] in {"", None}:
                 this.response = ErrorCode.NOT_FOUND
 
         this.respond()
@@ -91,18 +91,18 @@ class TimeZoneFromIPRequest(APIRequest):
         askedIp = str(this.data.get("ip"))
         this.data["ip"] = "<redacted>"
 
-        if (this.response is None):
-            if (askedIp in [None, ""]):
+        if this.response is None:
+            if askedIp in [None, ""]:
                 this.response = ErrorCode.BAD_REQUEST
             else:
                 try:
                     requestCity = Helpers.tzBot.maxMindDb.city(askedIp)
-                    if (requestCity is None):
+                    if requestCity is None:
                         this.response = ErrorCode.NOT_FOUND
                     else:
                         this.response = ErrorCode.OK
                         this.response[1] = requestCity.location.time_zone
-                        if (not this.response[1]):
+                        if not this.response[1]:
                             this.response = ErrorCode.NOT_FOUND
 
                 except geoip2.errors.AddressNotFoundError as e:
@@ -115,7 +115,7 @@ class TimeZoneFromIPRequest(APIRequest):
 class PingRequest(SimpleRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data)
-        if (this.response is None):
+        if this.response is None:
             this.response = ErrorCode.OK
             this.response[1] = "Pong"
 
@@ -129,11 +129,11 @@ class CommandRequest(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.COMMAND_API)
 
-        if (this.response is None):
+        if this.response is None:
             this.command = str(data.get("command"))
             this.args = data.get("args")
 
-            if (this.command is None):
+            if this.command is None:
                 this.response = ErrorCode.BAD_REQUEST
             else:
                 this.response = ErrorCode.OK
@@ -145,19 +145,19 @@ class CommandRequest(APIRequest):
 class TimeZoneOverridesPost(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.TZ_OVERRIDES_POST)
-        if (this.response is None):
+        if this.response is None:
             errorMsgs: list[str] = []
             for uuid, timezone in data.items():
-                if (not Helpers.isUUID(uuid)):
+                if not Helpers.isUUID(uuid):
                     errorMsgs.append(f"Invalid UUID: {uuid}")
 
-                if (timezone not in checkList):
-                    if (this.response is None):
+                if timezone not in checkList:
+                    if this.response is None:
                         errorMsgs.append(f"Invalid timezone: {timezone}")
                     else:
                         errorMsgs.append(f"Invalid timezone: {timezone}")
 
-            if (errorMsgs):
+            if errorMsgs:
                 this.response = ErrorCode.BAD_REQUEST
                 this.response[1] = ", ".join(errorMsgs)
                 this.respond()
@@ -173,7 +173,7 @@ class TimeZoneOverridesPost(APIRequest):
 class TimeZoneOverridesGet(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.TZ_OVERRIDES_GET)
-        if (this.response is None):
+        if this.response is None:
             this.response = ErrorCode.OK
             this.response[1] = Helpers.tzBot.db.getTzOverrides()
 
@@ -183,13 +183,13 @@ class TimeZoneOverridesGet(APIRequest):
 class TimeZoneOverrideRemove(UUIDRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.TZ_OVERRIDES_POST)
-        if (this.response is None):
-            if (Helpers.tzBot.db.getTzOverrideByUUID(this.uuid) in {None, ""}):
+        if this.response is None:
+            if Helpers.tzBot.db.getTzOverrideByUUID(this.uuid) in {None, ""}:
                 this.response = ErrorCode.NOT_FOUND
                 this.respond()
                 return
 
-            if (Helpers.tzBot.db.removeTzOverride(this.uuid)):
+            if Helpers.tzBot.db.removeTzOverride(this.uuid):
                 this.response = ErrorCode.OK
             else:
                 this.response = ErrorCode.INTERNAL_SERVER_ERROR
@@ -200,14 +200,14 @@ class TimeZoneOverrideRemove(UUIDRequest):
 class UserIdUUIDLinkPost(UUIDRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.UUID_POST)
-        if (this.response is None):
+        if this.response is None:
             this.timezone = this.data.get("timezone", None)
-            if (this.timezone not in Timezones.checkList):
+            if this.timezone not in Timezones.checkList:
                 this.response = ErrorCode.NOT_FOUND
                 this.respond()
                 return
 
-            if (Helpers.tzBot.db.getUserIdByUUID(this.uuid) not in {None, ""} or this.uuid in Helpers.tzBot.linkCodes):
+            if Helpers.tzBot.db.getUserIdByUUID(this.uuid) not in {None, ""} or this.uuid in Helpers.tzBot.linkCodes:
                 this.response = ErrorCode.NOT_FOUND
                 this.response[1] = "UUID already registered"
                 this.respond()
@@ -223,9 +223,9 @@ class UserIdUUIDLinkPost(UUIDRequest):
 class TimezoneFromUUIDRequest(UUIDRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.MINECRAFT_UUID)
-        if (this.response is None):
+        if this.response is None:
             timezone = Helpers.tzBot.db.getTimezoneByUUID(this.uuid)
-            if (timezone in {None, ""}):
+            if timezone in {None, ""}:
                 this.response = ErrorCode.NOT_FOUND
                 this.respond()
                 return
@@ -239,17 +239,17 @@ class TimezoneFromUUIDRequest(UUIDRequest):
 class ImageRequest(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.IMAGE_API)
-        if (this.response is None):
+        if this.response is None:
             this.r: str = data.get("r", "0")
             this.g: str = data.get("g", "0")
             this.b: str = data.get("b", "0")
 
             img = Helpers.generateImage(this.r, this.g, this.b)
 
-            if (img == b"-1"):
+            if img == b"-1":
                 this.response = ErrorCode.INTERNAL_SERVER_ERROR
                 this.response[1] = "Feature not available"
-            elif (img == b"-2"):
+            elif img == b"-2":
                 this.response = ErrorCode.BAD_REQUEST
                 this.response[1] = "Bad arguments"
             else:

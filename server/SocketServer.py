@@ -45,7 +45,7 @@ class SocketServer:
             return
 
         for client in this.tcpClients:
-            if (client.ipAddress == writer.get_extra_info("peername")):
+            if client.ipAddress == writer.get_extra_info("peername"):
                 asyncio.create_task(this.makeObject(msg, client))
                 return
 
@@ -56,18 +56,18 @@ class SocketServer:
     async def makeObject(this, msg: bytes, client: Client) -> None:
         jsonRequest: dict | None = parseJson(msg.decode("utf-8", errors="ignore"))
 
-        if (isinstance(client, TCPClient)):
+        if isinstance(client, TCPClient):
             protocol: str = "TCP"
         else:
             protocol: str = "UDP"
 
-        if (jsonRequest is not None):
+        if jsonRequest is not None:
             Logger.log(f"Got an unencrypted {protocol} request: {jsonRequest}")
 
         else:
             decrypted = AESDecrypt(msg, client.aesKey)
             jsonRequest = parseJson(decrypted)
-            if (jsonRequest is None):
+            if jsonRequest is None:
                 Logger.log(f"Got an invalid {protocol} request: {msg}")
                 fakeJson: dict = {"requestType": "INVALID", "data": {"message": msg}}
                 fakeJsonData: dict = fakeJson.pop("data")

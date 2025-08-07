@@ -34,7 +34,7 @@ def tryAESDecrypt(msg: bytes, keys: list[bytes]) -> tuple[dict, bytes] | None:
         decryptedMsg = AESDecrypt(msg, key)
 
         jsonRequest = parseJson(decryptedMsg)
-        if (not jsonRequest):
+        if not jsonRequest:
             continue
 
         return (jsonRequest, key)

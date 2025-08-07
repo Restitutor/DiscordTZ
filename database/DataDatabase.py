@@ -31,7 +31,7 @@ class Database:
             password=this._connectionDetails.password,
             host=this._connectionDetails.host,
             port=this._connectionDetails.port,
-            autocommit=this._connectionDetails.autocommit
+            autocommit=this._connectionDetails.autocommit,
         )
 
     def set(this, userId: int, timezone: str, alias: str) -> bool:
@@ -78,7 +78,7 @@ class Database:
 
             result = cursor.fetchone()
 
-            if (result):
+            if result:
                 return str(result[0])
             return None
 
@@ -97,7 +97,7 @@ class Database:
             this.conn.commit()
             result = cursor.fetchone()
 
-            if (result):
+            if result:
                 return str(result[0])
             return None
 
@@ -115,7 +115,7 @@ class Database:
             cursor.execute(query, data)
             this.conn.commit()
             result = cursor.fetchone()
-            if (result):
+            if result:
                 return str(result[0])
             return None
 
@@ -133,7 +133,7 @@ class Database:
             cursor.execute(query, data)
             this.conn.commit()
             result = cursor.fetchone()
-            if (result):
+            if result:
                 return str(result[0])
             return None
 

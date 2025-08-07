@@ -11,14 +11,14 @@ class UDPClient(Client):
         this.transport: asyncio.DatagramTransport = transport
 
     def send(this, data: bytes) -> None:
-        if (this.encrypt):
+        if this.encrypt:
             data = RSAEncrypt(data, this.rsaKey) if this.rsaKey is not None else AESEncrypt(data, this.aesKey)
 
         this.transport.sendto(data, this.ipAddress)
 
 
 class UDPProtocol(asyncio.DatagramProtocol):
-    def __init__(this, server) -> None: # noqa: ANN001
+    def __init__(this, server) -> None:  # noqa: ANN001
         this.server = server
 
     def connection_made(this, transport: asyncio.transports.DatagramTransport) -> None:

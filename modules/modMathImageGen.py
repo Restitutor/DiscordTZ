@@ -22,10 +22,10 @@ class MathImageGen(commands.Cog):
         b: discord.Option(str, "Math expression for blue") = "0",
     ) -> None:
         if (returnValue := Helpers.generateImage(r, g, b)) != 0:
-            if (returnValue == b"-2"):
+            if returnValue == b"-2":
                 await ctx.response.send_message("There was a problem with your expression(s).", ephemeral=True)
 
-            if (returnValue == b"-1"):
+            if returnValue == b"-1":
                 await ctx.response.send_message("This feature is not available.", ephemeral=True)
 
             return
@@ -35,7 +35,7 @@ class MathImageGen(commands.Cog):
 
     @generate.error
     async def generation_error(this, ctx: discord.ApplicationContext, error: Exception) -> None:
-        if (isinstance(error, commands.CommandOnCooldown)):
+        if isinstance(error, commands.CommandOnCooldown):
             embed = this.client.fail.copy()
             embed.description = "You can run this once every 10 seconds!"
 

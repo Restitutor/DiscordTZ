@@ -5,7 +5,7 @@ aesKeysByIp: dict[str, bytes] = {}
 
 
 def getAesKeyByIp(ip: str) -> bytes:
-    if (ip not in aesKeysByIp):
+    if ip not in aesKeysByIp:
         aesKeysByIp[ip] = os.urandom(32)
 
     return aesKeysByIp[ip]

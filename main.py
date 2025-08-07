@@ -21,10 +21,10 @@ from shell.Logger import Logger
 def getGeoIP(conf: MaxmindConfig) -> None:
     day = 86400
     dbStats = Path.stat(Path("GeoLite2-City.mmdb")) if Path("GeoLite2-City.mmdb").is_file() else None
-    if (dbStats is not None):
+    if dbStats is not None:
         currentTime = time.time()
         secondsDiff = currentTime - dbStats.st_ctime
-        if (secondsDiff < day):
+        if secondsDiff < day:
             Logger.log("Skipping GeoLite2 database download, it was updated less than 24 hours ago.")
             return
 
@@ -60,7 +60,7 @@ async def main() -> None:
 
     tasks = await asyncio.gather(serverStarter, shellTask, return_exceptions=True)
     for result in tasks:
-        if (isinstance(result, Exception)):
+        if isinstance(result, Exception):
             Logger.log(f"Task failed: {result}")
 
 

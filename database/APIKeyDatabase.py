@@ -39,7 +39,7 @@ class ApiKeyDatabase:
         cursor = await this.conn.execute(query, (apiKey,))
         row = await cursor.fetchone()
 
-        if (not row):
+        if not row:
             Logger.error("Could not find API key to move to.")
             return
 

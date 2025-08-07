@@ -81,7 +81,7 @@ def parseJson(data: str) -> dict | None:
 
 
 def generateImage(r: str, g: str, b: str) -> bytes:
-    if (not Path("BMPGen").is_file()):
+    if not Path("BMPGen").is_file():
         return b"-1"
     try:
         subprocess.run(["./BMPGen", "-r", f"{r}", "-g", f"{g}", "-b", f"{b}"], check=True)  # noqa: S603
