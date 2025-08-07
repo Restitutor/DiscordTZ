@@ -46,7 +46,7 @@ class ApiKey:
     def toDbForm(this) -> str:
         return (
             base64.encodebytes(
-                AESEncrypt(json.dumps(this.__dict__, separators=(",", ":")).encode(), str(Helpers.tzBot.config["server"]["apiKeysKey"]).encode())
+                AESEncrypt(json.dumps(this.__dict__, separators=(",", ":")).encode(), str(Helpers.tzBot.config.server.apiKeysKey).encode())
             )
             .decode()
             .replace("\n", "")
@@ -54,7 +54,7 @@ class ApiKey:
 
     @classmethod
     def fromDbForm(cls, dbFormKey: str):  # noqa: ANN206
-        data = json.loads(AESDecrypt(base64.decodebytes(dbFormKey.encode()), str(Helpers.tzBot.config["server"]["apiKeysKey"]).encode()))
+        data = json.loads(AESDecrypt(base64.decodebytes(dbFormKey.encode()), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
         return cls(**data)
 
     def __str__(this) -> str:

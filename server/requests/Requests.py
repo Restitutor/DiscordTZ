@@ -261,8 +261,8 @@ class ImageRequest(APIRequest):
                 return
 
             subprocess.run(
-                ["/usr/bin/magick", "output.bmp", "-define", "png:compression-level=9", "-define",
-                 "png:compression-strategy=1", "output.png"], check=False
+                ["/usr/bin/magick", "output.bmp", "-define", "png:compression-level=9", "-define", "png:compression-strategy=1", "output.png"],
+                check=False,
             )
             with open("output.png", "rb") as f:
                 this.response = ErrorCode.OK
