@@ -7,13 +7,13 @@ requires-python = ">=3.13"
 
 dependencies = [
     "py-cord==2.6.1",
-    "mariadb==1.1.12",
+    "mariadb==1.1.13",
     "datetime==5.5",
-    "asyncio==3.4.3",
-    "pycryptodome==3.22.0",
+    "asyncio==4.0.0",
+    "pycryptodome==3.23.0",
     "geoip2~=5.1.0",
     "pytz~=2025.2",
-    "requests~=2.32.3",
+    "requests~=2.32.5",
     "prompt_toolkit~=3.0.51",
     "tzlocal==5.3.1",
     "sqlite3-to-mysql==2.4.2",
