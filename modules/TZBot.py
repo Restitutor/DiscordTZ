@@ -28,7 +28,7 @@ class TZBot(commands.Bot):
 
         this.ownerId = this.config.ownerId
         this.linkCodes: dict[str, tuple[str, str]] = {}
-        this.db: Database = Database(this.config.mariadbDetails)
+        this.db: Database = Database(this.config.dbFilename)
         this.apiDb = ApiKeyDatabase(this.config.server.apiKeysKey)
         this.maxMindDb: geoip2.database.Reader = geoip2.database.Reader("GeoLite2-City.mmdb")
 
@@ -57,13 +57,13 @@ class TZBot(commands.Bot):
     def getAvailableModules(this) -> list[str]:
         return [file.stem[3:] for file in pathlib.Path("./modules").glob("mod*.py") if file.stem.startswith("mod")]
 
-    def getLoadedModules(this) -> list[str]:
+    async def getLoadedModules(this) -> list[str]:
         return this.loadedModules
 
-    def getUnloadedModules(this) -> list[str]:
+    async def getUnloadedModules(this) -> list[str]:
         return [module for module in this.getAvailableModules() if module not in this.loadedModules]
 
-    def unloadModules(this, modules: list[str]) -> None:
+    async def unloadModules(this, modules: list[str]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
                 asyncio.create_task(this.sync_commands(force=True))
@@ -79,7 +79,7 @@ class TZBot(commands.Bot):
             finally:
                 asyncio.create_task(this.sync_commands(force=True))
 
-    def loadModules(this, modules: list[str]) -> None:
+    async def loadModules(this, modules: list[str]) -> None:
         for module in modules:
             if module not in this.getUnloadedModules():
                 asyncio.create_task(this.sync_commands(force=True))
@@ -95,7 +95,7 @@ class TZBot(commands.Bot):
             finally:
                 asyncio.create_task(this.sync_commands(force=True))
 
-    def reloadModules(this, modules: list[str]) -> None:
+    async def reloadModules(this, modules: list[str]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
                 asyncio.create_task(this.sync_commands(force=True))

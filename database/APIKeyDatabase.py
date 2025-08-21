@@ -8,7 +8,6 @@ from shell.Logger import Logger
 class ApiKeyDatabase:
     def __init__(this, apiKeysKey: str) -> None:
         this.encryptionKey = apiKeysKey
-
         asyncio.create_task(this._postInit())
 
     async def _postInit(this) -> None:
@@ -55,7 +54,7 @@ class ApiKeyDatabase:
         query = "SELECT base64repr FROM pendingApiKeys WHERE messageId = ?"
 
         cursor = await this.conn.execute(query, (msgId,))
-        return await cursor.fetchone()[0]
+        return (await cursor.fetchone())[0]
 
     async def flushRequest(this, apiKey: str) -> None:
         query = "DELETE FROM pendingApiKeys WHERE base64repr = ?"
@@ -66,4 +65,4 @@ class ApiKeyDatabase:
         query = "SELECT EXISTS(SELECT 1 FROM apiKeys WHERE base64repr = ?)"
 
         cursor = await this.conn.execute(query, (apiKey,))
-        return await cursor.fetchone()[0]
+        return (await cursor.fetchone())[0]

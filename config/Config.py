@@ -22,6 +22,16 @@ class MariaDBConfig:
     tzTableName: str
     overridesTableName: str
 
+    def __dict__(this) -> dict:
+        return {
+            "host": this.host,
+            "user": this.user,
+            "password": this.password,
+            "db": this.database,
+            "port": this.port,
+            "autocommit": this.autocommit,
+        }
+
 
 @dataclass_json
 @dataclass
@@ -47,6 +57,7 @@ class Config:
     token: str
     ownerId: int
     maxmind: MaxmindConfig
+    dbFilename: str
     mariadbDetails: MariaDBConfig
     server: ServerConfig
     packetLogs: PacketLogsConfig

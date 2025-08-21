@@ -11,6 +11,7 @@ import discord
 import requests
 
 from config.Config import Config, MaxmindConfig
+from database.DatabaseSyncer import SQLiteToMariaDBSync
 from modules.TZBot import TZBot
 from server.SocketServer import SocketServer
 from shell.Logger import Logger
@@ -42,7 +43,7 @@ def getGeoIP(conf: MaxmindConfig) -> None:
     subprocess.run(["/usr/bin/tar", "-xf", "GeoLite2-City.tar.gz", "-C", "GeoLite2-City"], check=False)
     shutil.move(f"GeoLite2-City/{os.listdir('GeoLite2-City')[0]}/GeoLite2-City.mmdb", "GeoLite2-City.mmdb")  # noqa: PTH208
     Path.unlink(Path("GeoLite2-City.tar.gz"))
-    Path.unlink(Path("GeoLite2-City/"))
+    shutil.rmtree("GeoLite2-City")
 
 
 async def main() -> None:
@@ -55,11 +56,13 @@ async def main() -> None:
     getGeoIP(config.maxmind)
     serverStarter = asyncio.create_task(SocketServer(config.server).start())
 
+    syncTask = asyncio.create_task(SQLiteToMariaDBSync.cronJob("timezones.sqlite", config.mariadbDetails))
+
     client = TZBot(config, command_prefix="tz!", help_command=None, intents=discord.Intents.all())
     async with client:
         await client.start(config.token)
 
-    tasks = await asyncio.gather(serverStarter, shellTask, return_exceptions=True)
+    tasks = await asyncio.gather(serverStarter, shellTask, syncTask, return_exceptions=True)
     for result in tasks:
         if isinstance(result, Exception):
             Logger.log(f"Task failed: {result}")

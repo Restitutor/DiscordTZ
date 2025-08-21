@@ -102,9 +102,7 @@ class ServerLogging(commands.Cog):
 
     async def onSuccess(this, request: SimpleRequest) -> None:
         if isinstance(request, UserIdUUIDLinkPost):
-            this.client.linkCodes.update({request.code: (request.uuid, request.timezone)})
             request.response[1] = "<redacted>"
-            asyncio.create_task(this.client.removeCode(15, request.code))
 
         lock = "🔒" if request.client.encrypt else ""
         embed: discord.Embed = discord.Embed(title=f"{lock} **Success** {lock}", color=discord.Color.green())

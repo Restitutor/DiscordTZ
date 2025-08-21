@@ -20,6 +20,7 @@ dependencies = [
     "mysql-to-sqlite3==2.4.2",
     "dataclasses-json==0.6.7",
     "aiosqlite>=0.21.0",
+    "aiomysql>=0.2.0",
     "aiofiles>=24.1.0",
 ]
 
@@ -77,6 +78,7 @@ ignore = [
     "N815",     # mixCaseOmg
     "N816",     # camelCase
     "PLR0912",  # Too many branches
+    "PGH004",   # Blanket noqa
     "PTH123",   # Path.open()
     "RUF006",   # Storing return value of a function
     "RUF012",   # Annotation with @typing.ClassVar

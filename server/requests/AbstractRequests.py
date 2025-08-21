@@ -1,4 +1,3 @@
-import asyncio
 import json
 import random
 
@@ -38,14 +37,16 @@ class SimpleRequest:
 
         if this.__class__.__name__ == "SimpleRequest":
             this.client.encrypt = False
-            this.respond()
 
-    def respond(this) -> None:
+    async def process(this) -> None:
+        await this.respond()
+
+    async def respond(this) -> None:
         if this.__class__.__name__ == "SimpleRequest":
             this.response = ErrorCode.BAD_REQUEST
             this.client.encrypt = False
 
-        asyncio.create_task(sendResponse(this))
+        await sendResponse(this)
 
     def __str__(this) -> str:
         return f"{this.__class__.__name__}({this.protocol}, {this.client.ipAddress}, {this.headers}, {this.data})"
@@ -54,7 +55,9 @@ class SimpleRequest:
 class PartiallyEncryptedRequest(SimpleRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data)
-        if not client.encrypt and not Helpers.isLocalSubnet(this.client.ipAddress[0]):
+
+    async def process(this) -> None:
+        if not (this.client.encrypt and await Helpers.isLocalSubnet(this.client.ipAddress[0])):
             this.response = ErrorCode.BAD_REQUEST
             this.response[1] = "Bad Request, Unencrypted"
 
@@ -62,7 +65,9 @@ class PartiallyEncryptedRequest(SimpleRequest):
 class EncryptedRequest(PartiallyEncryptedRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data)
-        if this.response is None and not this.client.encrypt:
+
+    async def process(this) -> None:
+        if not (this.response and this.client.encrypt):
             this.response = ErrorCode.BAD_REQUEST
             this.response[1] = "Bad Request, Unencrypted"
 
@@ -70,20 +75,22 @@ class EncryptedRequest(PartiallyEncryptedRequest):
 class APIRequest(PartiallyEncryptedRequest):
     def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data)
-        if this.response is None:
-            this.rawApiKey = this.headers.get("apiKey")
-            if this.rawApiKey is None:
+        this.requiredPerms = requiredPerms
+        this.rawApiKey = this.headers.get("apiKey")
+        this.apiKey = ApiKey.fromDbForm(this.rawApiKey)
+
+    async def process(this) -> None:
+        if not this.response:
+            if not this.rawApiKey:
                 this.response = ErrorCode.FORBIDDEN
                 return
 
-            if not Helpers.tzBot.apiDb.isValidKey(this.rawApiKey):
+            if not await Helpers.tzBot.apiDb.isValidKey(this.rawApiKey):
                 Logger.error("Key isn't in the DB")
                 this.response = ErrorCode.FORBIDDEN
                 return
 
-            this.apiKey = ApiKey.fromDbForm(this.rawApiKey)
-
-            if not this.apiKey.hasPermissions(*requiredPerms):
+            if not this.apiKey.hasPermissions(*this.requiredPerms):
                 Logger.error("No permissions")
                 this.response = ErrorCode.FORBIDDEN
                 return
@@ -92,29 +99,32 @@ class APIRequest(PartiallyEncryptedRequest):
 class UserIdRequest(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data, *requiredPerms)
-        if this.response is None:
-            this.userId = int(data.get("userId")) if str(data.get("userId")).isnumeric() else None
-            if this.userId is None:
-                this.response = ErrorCode.BAD_REQUEST
+        this.userId = int(data.get("userId")) if str(data.get("userId")).isnumeric() else None
+
+    async def process(this) -> None:
+        if not (this.response and this.userId):
+            this.response = ErrorCode.BAD_REQUEST
 
 
 class AliasRequest(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data, *requiredPerms)
-        if this.response is None:
-            this.alias = str(data.get("alias"))
-            if this.alias is None:
-                this.response = ErrorCode.BAD_REQUEST
+        this.alias = str(data.get("alias"))
+
+    async def process(this) -> None:
+        if not this.response and this.alias is None:
+            this.response = ErrorCode.BAD_REQUEST
 
 
 class UUIDRequest(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
         super().__init__(client, headers, data, *requiredPerms)
-        if this.response is None:
-            this.uuid = data.get("uuid")
-            if this.uuid is None or not Helpers.isUUID(this.uuid):
-                this.response = ErrorCode.BAD_REQUEST
-                this.response[1] = "Invalid UUID"
+        this.uuid = data.get("uuid")
+
+    async def process(this) -> None:
+        if (not this.response and this.uuid is None) or not await Helpers.isUUID(this.uuid):
+            this.response = ErrorCode.BAD_REQUEST
+            this.response[1] = "Invalid UUID"
 
 
 async def chinaResponse(request: SimpleRequest) -> None:

@@ -52,7 +52,7 @@ class TzCommands(commands.Cog):
             )
             return
 
-        if this.client.db.set(ctx.user.id, timezone, tzalias):
+        if await this.client.db.setTimezone(ctx.user.id, timezone, tzalias):
             successCpy = this.client.success.copy()
             successCpy.set_footer(text=ctx.user.name, icon_url=ctx.user.avatar.url)
             successCpy.timestamp = datetime.datetime.now()
@@ -67,9 +67,9 @@ class TzCommands(commands.Cog):
 
     @timezoneGroup.command(name="show", description="Shows you timezone you set.")
     async def tzGet(this, ctx: discord.ApplicationContext) -> None:
-        res: str | None = this.client.db.getTimeZone(ctx.user.id)
+        res: str | None = await this.client.db.getTimeZone(ctx.user.id)
 
-        if res is None:
+        if not res:
             failCpy = this.client.fail
             failCpy.set_footer(text=ctx.user.name, icon_url=ctx.user.avatar.url)
             failCpy.timestamp = datetime.datetime.now()
@@ -84,7 +84,7 @@ class TzCommands(commands.Cog):
             await ctx.response.send_message("Aliases can't contain spaces!", ephemeral=True)
             return
 
-        if this.client.db.setAlias(ctx.user.id, tzalias):
+        if await this.client.db.setAlias(ctx.user.id, tzalias):
             successCpy = this.client.success.copy()
             successCpy.set_footer(text=ctx.user.name, icon_url=ctx.user.avatar.url)
             successCpy.timestamp = datetime.datetime.now()
@@ -101,7 +101,7 @@ class TzCommands(commands.Cog):
     @discord.slash_command(name="now", description="Shows person's time.")
     async def now(this, ctx: discord.ApplicationContext, person: discord.Option(discord.Member, "Who's time to display?")) -> None:
         try:
-            zoneName = this.client.db.getTimeZone(person.id)
+            zoneName = await this.client.db.getTimeZone(person.id)
             timezone = pytz.timezone(zoneName)
         except pytz.exceptions.UnknownTimeZoneError:
             await ctx.response.send_message("This person hasn't registered with Timezone Bot yet.", ephemeral=True)

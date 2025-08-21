@@ -54,7 +54,7 @@ class SocketServer:
         asyncio.create_task(this.makeObject(msg, client))
 
     async def makeObject(this, msg: bytes, client: Client) -> None:
-        jsonRequest: dict | None = parseJson(msg.decode("utf-8", errors="ignore"))
+        jsonRequest: dict | None = await parseJson(msg.decode("utf-8", errors="ignore"))
 
         if isinstance(client, TCPClient):
             protocol: str = "TCP"
@@ -66,29 +66,40 @@ class SocketServer:
 
         else:
             decrypted = AESDecrypt(msg, client.aesKey)
-            jsonRequest = parseJson(decrypted)
-            if jsonRequest is None:
+            jsonRequest = await parseJson(decrypted)
+
+            if not jsonRequest:
                 Logger.log(f"Got an invalid {protocol} request: {msg}")
                 fakeJson: dict = {"requestType": "INVALID", "data": {"message": msg}}
                 fakeJsonData: dict = fakeJson.pop("data")
-                SimpleRequest(client, fakeJson, fakeJsonData)
+
+                request = SimpleRequest(client, fakeJson, fakeJsonData)
+                await request.process()
+
                 return
+
             Logger.log(f"Got an encrypted {protocol} request: {jsonRequest}")
             client.encrypt = True
 
-        if ("requestType", "data" in jsonRequest):  # noqa: F634
-            member = str(jsonRequest["requestType"])
+        payload: dict | None = jsonRequest.get("data")
+        requestType: str | None = jsonRequest.get("requestType")
+
+        if requestType and payload:
+            jsonData = jsonRequest.pop("data")
+
             try:
-                reqType: RequestType = getattr(RequestType, member)
+                reqType: RequestType = getattr(RequestType, requestType)
             except AttributeError:
-                Logger.error(f"Invalid request type: {jsonRequest['requestType']!s}, defaulting to SimpleRequest")
-                jsonData = jsonRequest.pop("data")
-                SimpleRequest(client, jsonRequest, jsonData)
+                Logger.error(f"Invalid request type: {requestType}, defaulting to SimpleRequest")
+
+                request = SimpleRequest(client, jsonRequest, jsonData)
+                await request.process()
                 return
 
-            jsonData = jsonRequest.pop("data")
             try:
-                reqType(client, jsonRequest, jsonData)
+                request = reqType(client, jsonRequest, jsonData)
+                await request.process()
+
             except PermissionError as e:
                 Logger.error(f"{e.args[0]}")
                 SimpleRequest(client, jsonRequest, jsonData)

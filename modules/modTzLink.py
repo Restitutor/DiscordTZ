@@ -10,7 +10,10 @@ class TzLink(commands.Cog):
 
     @discord.slash_command(name="link", description="Links you to your Minecraft account.")
     async def link(this, ctx: discord.ApplicationContext, code: discord.Option(str, "Code that was generated for you in Minecraft.")) -> None:
-        if this.client.db.getUUIDByUserId(ctx.user.id) is not None:
+        testUuid = await this.client.db.getUUIDByUserId(ctx.user.id)
+        testId = await this.client.db.getUserIdByUUID(testUuid)
+
+        if testUuid and testId and int(testId) == ctx.user.id:
             failCpy = this.client.fail.copy()
             failCpy.description = "Your account is already linked!"
             await ctx.response.send_message(embed=failCpy, ephemeral=True)
@@ -24,14 +27,17 @@ class TzLink(commands.Cog):
 
         successCpy = this.client.success.copy()
         entry: tuple[str, str] = this.client.linkCodes.pop(code)
-        successCpy.description = f"Your Discord account has been successfully linked with `{entry}`!"
+        successCpy.description = f"Your Discord account has been successfully linked with `{entry[0]}`!"
         await ctx.response.send_message(embed=successCpy, ephemeral=True)
 
-        this.client.db.assignUUIDToUserId(entry[0], ctx.user.id, entry[1], ctx.user.name.lower())
+        await this.client.db.assignUUIDToUserId(entry[0], ctx.user.id, entry[1])
 
     @discord.slash_command(name="unlink", description="Unlinks your Minecraft account.")
     async def unlink(this, ctx: discord.ApplicationContext) -> None:
-        if this.client.db.getUUIDByUserId(ctx.user.id) is None:
+        testUuid = await this.client.db.getUUIDByUserId(ctx.user.id)
+        testId = await this.client.db.getUserIdByUUID(testUuid)
+
+        if not (testUuid and testId) or int(testId) != ctx.user.id:
             failCpy = this.client.fail.copy()
             failCpy.description = "There's nothing to unlink!"
             await ctx.response.send_message(embed=failCpy, ephemeral=True)
@@ -41,7 +47,7 @@ class TzLink(commands.Cog):
         successCpy.description = "Your Discord account has been successfully unlinked!"
         await ctx.response.send_message(embed=successCpy, ephemeral=True)
 
-        this.client.db.unassignUUIDFromUserId(ctx.user.id)
+        await this.client.db.unassignUUIDFromUserId(ctx.user.id)
 
 
 def setup(client: TZBot) -> None:

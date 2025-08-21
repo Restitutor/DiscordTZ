@@ -54,7 +54,11 @@ class ApiKey:
 
     @classmethod
     def fromDbForm(cls, dbFormKey: str):  # noqa: ANN206
-        data = json.loads(AESDecrypt(base64.decodebytes(dbFormKey.encode()), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
+        try:
+            data = json.loads(AESDecrypt(base64.decodebytes(dbFormKey.encode()), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
+        except (json.decoder.JSONDecodeError, KeyError):
+            return None
+
         return cls(**data)
 
     def __str__(this) -> str:

@@ -1,9 +1,8 @@
+import asyncio
 import json
 import random
 import re
 import string
-import subprocess
-from io import BufferedReader
 from pathlib import Path
 
 import aiofiles
@@ -27,7 +26,7 @@ async def getHosts() -> dict[str, str]:
     return dict(pattern.findall(content))
 
 
-def isLocalSubnet(ip: str) -> bool:
+async def isLocalSubnet(ip: str) -> bool:
     ipRegex = re.compile(
         r"""
                 ^(?:
@@ -67,35 +66,48 @@ def isLocalSubnet(ip: str) -> bool:
     return bool(ipRegex.match(ip))
 
 
-def isUUID(uuid: str) -> bool:
+async def isUUID(uuid: str) -> bool:
     pattern = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
     return bool(pattern.match(uuid))
 
 
-def generateCharSequence(n: int) -> str:
+async def generateCharSequence(n: int) -> str:
     return "".join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(n))
 
 
-def parseJson(data: str) -> dict | None:
+async def parseJson(data: str) -> dict | None:
     try:
         return json.loads(data)
     except json.JSONDecodeError:
         return None
 
 
-def generateImage(r: str, g: str, b: str) -> bytes | BufferedReader:
+async def generateImage(r: str, g: str, b: str) -> bytes:
     if not Path("BMPGen").is_file():
         return b"-1"
-    try:
-        subprocess.run(["./BMPGen", "-r", f"{r}", "-g", f"{g}", "-b", f"{b}"], check=True)  # noqa: S603
-    except subprocess.CalledProcessError:
+
+    process = await asyncio.create_subprocess_exec(
+        "./BMPGen", "-r", f"{r}", "-g", f"{g}", "-b", f"{b}", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    await process.communicate()
+    if process.returncode != 0:
         return b"-2"
 
-    subprocess.run(
-        ["/usr/bin/magick", "output.bmp", "-define", "png:compression-level=9", "-define", "png:compression-strategy=1", "output.png"], check=False
+    await asyncio.create_subprocess_exec(
+        "/usr/bin/magick",
+        "output.bmp",
+        "-define",
+        "png:compression-level=9",
+        "-define",
+        "png:compression-strategy=1",
+        "output.png",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
-    with open("output.png", "rb") as f:
-        buf = f
+    await process.communicate()
+
+    async with aiofiles.open("output.png", "rb") as f:
+        buf = await f.read()
         Path.unlink(Path("output.bmp"), missing_ok=True)
         Path.unlink(Path("output.png"), missing_ok=True)
 
