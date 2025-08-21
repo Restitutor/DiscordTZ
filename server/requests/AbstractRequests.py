@@ -77,7 +77,6 @@ class APIRequest(PartiallyEncryptedRequest):
         super().__init__(client, headers, data)
         this.requiredPerms = requiredPerms
         this.rawApiKey = this.headers.get("apiKey")
-        this.apiKey = ApiKey.fromDbForm(this.rawApiKey)
 
     async def process(this) -> None:
         if not this.response:
@@ -90,7 +89,9 @@ class APIRequest(PartiallyEncryptedRequest):
                 this.response = ErrorCode.FORBIDDEN
                 return
 
-            if not this.apiKey.hasPermissions(*this.requiredPerms):
+            apiKey = ApiKey.fromDbForm(this.rawApiKey)
+
+            if not apiKey.hasPermissions(*this.requiredPerms):
                 Logger.error("No permissions")
                 this.response = ErrorCode.FORBIDDEN
                 return
