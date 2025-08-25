@@ -1,5 +1,5 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator, Any
 
 
 @dataclass
@@ -9,7 +9,7 @@ class IP:
         this.port = port
 
     def __iter__(this) -> Iterator["IP"]:
-        for key in this.__dict__.keys():
+        for key in this.__dict__:
             yield this.__dict__[key]
 
     @classmethod

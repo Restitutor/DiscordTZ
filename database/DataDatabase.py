@@ -4,7 +4,6 @@ import aiomysql
 import aiosqlite
 
 from config.Config import MariaDBConfig
-from shell.Logger import Logger
 
 
 class Database:

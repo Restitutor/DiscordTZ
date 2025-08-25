@@ -30,7 +30,10 @@ async def getGeoIP(conf: MaxmindConfig) -> None:
 
     url = "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz"
 
-    async with aiohttp.ClientSession() as session, session.get(url, timeout=aiohttp.ClientTimeout(total=10), auth=aiohttp.BasicAuth(str(conf.accountId), conf.token, 'utf-8')) as response:
+    async with (
+        aiohttp.ClientSession() as session,
+        session.get(url, timeout=aiohttp.ClientTimeout(total=10), auth=aiohttp.BasicAuth(str(conf.accountId), conf.token, "utf-8")) as response,
+    ):
         if response.status != 200:  # noqa: PLR2004
             Logger.error(f"Failed to download GeoLite2 database: HTTP {response.status}")
             return
