@@ -57,13 +57,13 @@ class TZBot(commands.Bot):
     def getAvailableModules(this) -> list[str]:
         return [file.stem[3:] for file in pathlib.Path("./modules").glob("mod*.py") if file.stem.startswith("mod")]
 
-    async def getLoadedModules(this) -> list[str]:
+    def getLoadedModules(this) -> list[str]:
         return this.loadedModules
 
-    async def getUnloadedModules(this) -> list[str]:
+    def getUnloadedModules(this) -> list[str]:
         return [module for module in this.getAvailableModules() if module not in this.loadedModules]
 
-    async def unloadModules(this, modules: list[str]) -> None:
+    def unloadModules(this, modules: list[str]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
                 asyncio.create_task(this.sync_commands(force=True))
@@ -79,7 +79,7 @@ class TZBot(commands.Bot):
             finally:
                 asyncio.create_task(this.sync_commands(force=True))
 
-    async def loadModules(this, modules: list[str]) -> None:
+    def loadModules(this, modules: list[str]) -> None:
         for module in modules:
             if module not in this.getUnloadedModules():
                 asyncio.create_task(this.sync_commands(force=True))
@@ -95,7 +95,7 @@ class TZBot(commands.Bot):
             finally:
                 asyncio.create_task(this.sync_commands(force=True))
 
-    async def reloadModules(this, modules: list[str]) -> None:
+    def reloadModules(this, modules: list[str]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
                 asyncio.create_task(this.sync_commands(force=True))

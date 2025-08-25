@@ -283,7 +283,7 @@ class ModList(Command):
     def __init__(this) -> None:
         super().__init__("lsmod", "Loads a Discord bot module", aliases=["ml", "ls"])
 
-    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         client: TZBot = Helpers.tzBot
         ctx.log("Module Status:")
         for module in client.getAvailableModules():

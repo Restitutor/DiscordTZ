@@ -33,7 +33,7 @@ class ModuleManagement(commands.Cog):
             Logger.error(f"{ctx.user.name} tried to load {modulename}, which doesn't exist!")
             return
 
-        await this.client.loadModules([modulename])
+        this.client.loadModules([modulename])
         Logger.success(f"{ctx.user.name} loaded {modulename}!")
 
         await ctx.response.send_message(f"Module {modulename} loaded!", ephemeral=True)
@@ -48,7 +48,7 @@ class ModuleManagement(commands.Cog):
             Logger.error(f"{ctx.user.name} tried to unload {modulename}, which doesn't exist!")
             return
 
-        await this.client.unloadModules([modulename])
+        this.client.unloadModules([modulename])
         Logger.success(f"{ctx.user.name} unloaded {modulename}!")
 
         await ctx.response.send_message(f"Module {modulename} unloaded!", ephemeral=True)
@@ -63,7 +63,7 @@ class ModuleManagement(commands.Cog):
             Logger.error(f"{ctx.user.name} tried to reload {modulename}, which doesn't exist!")
             return
 
-        await this.client.reloadModules([modulename])
+        this.client.reloadModules([modulename])
         Logger.success(f"{ctx.user.name} reloaded {modulename}!")
 
         await ctx.response.send_message(f"Module {modulename} reloaded!", ephemeral=True)
