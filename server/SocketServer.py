@@ -45,7 +45,7 @@ class SocketServer:
             return
 
         for client in this.tcpClients:
-            if client.ipAddress == writer.get_extra_info("peername"):
+            if client.ip == writer.get_extra_info("peername"):
                 asyncio.create_task(this.makeObject(msg, client))
                 return
 

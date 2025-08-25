@@ -20,12 +20,12 @@ async def createBasicEmbed(request: SimpleRequest, template: discord.Embed) -> t
     if request.city is not None:
         country = request.city.country.iso_code
 
-    elif request.client.ipAddress[0] == "127.0.0.1":
+    elif request.client.ip[0] == "127.0.0.1":
         with aiofiles.open("/etc/hostname") as f:
             country = f.read().capitalize()
 
-    elif request.client.ipAddress[0] in hosts:
-        country = hosts[request.client.ipAddress[0]].capitalize()
+    elif request.client.ip[0] in hosts:
+        country = hosts[request.client.ip[0]].capitalize()
 
     else:
         country = "Local"

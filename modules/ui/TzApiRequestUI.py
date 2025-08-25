@@ -55,7 +55,7 @@ class TzApiRequestUI(discord.ui.View):
     @discord.ui.select(
         placeholder="Select permissions you want to use",
         min_values=1,
-        max_values=9,
+        max_values=7,
         options=[
             discord.SelectOption(label="Discord ID", description="You may use Discord ID to query/get.", value="DISCORD_ID", emoji="🔵"),
             discord.SelectOption(
@@ -74,7 +74,7 @@ class TzApiRequestUI(discord.ui.View):
             discord.SelectOption(
                 label="Edit Timezone Overrides", description="You may edit the timezone overrides database.", value="TZ_OVERRIDES_POST", emoji="✏️"
             ),
-            discord.SelectOption(label="Image Creation API", description="You may generate images using math.", value="IMAGE_API", emoji="🖼️"),
+            # discord.SelectOption(label="Image Creation API", description="You may generate images using math.", value="IMAGE_API", emoji="🖼️"),
         ],
         custom_id="PERMSELECT",
     )

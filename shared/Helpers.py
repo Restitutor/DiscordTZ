@@ -78,7 +78,7 @@ async def generateCharSequence(n: int) -> str:
 async def parseJson(data: str) -> dict | None:
     try:
         return json.loads(data)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, TypeError):
         return None
 
 

@@ -31,7 +31,7 @@ class HelloRequest(SimpleRequest):
                     this.client.rsaKey = pubKey
 
                     this.response = ErrorCode.OK
-                    this.response[1] = {"aesKey": base64.encodebytes(this.client.aesKey).decode("utf-8")}
+                    this.response.message = {"aesKey": base64.encodebytes(this.client.aesKey).decode("utf-8")}
                 except ValueError as e:
                     Logger.error(f"Failed to import client's RSA public key: {e}")
                     this.response = ErrorCode.BAD_REQUEST
@@ -54,8 +54,8 @@ class TimeZoneRequest(UserIdRequest):
 
         if not this.response:
             this.response = ErrorCode.OK
-            this.response[1] = await Helpers.tzBot.db.getTimeZone(this.userId)
-            if this.response[1] in {"", None}:
+            this.response.message = await Helpers.tzBot.db.getTimeZone(this.userId)
+            if not this.response.message:
                 this.response = ErrorCode.NOT_FOUND
 
         await this.respond()
@@ -70,8 +70,8 @@ class AliasFromUserRequest(UserIdRequest):
 
         if not this.response:
             this.response = ErrorCode.OK
-            this.response[1] = await Helpers.tzBot.db.getAlias(this.userId)
-            if this.response[1] in {"", None}:
+            this.response.message = await Helpers.tzBot.db.getAlias(this.userId)
+            if not this.response.message:
                 this.response = ErrorCode.NOT_FOUND
 
         await this.respond()
@@ -86,8 +86,8 @@ class UserFromAliasRequest(AliasRequest):
 
         if not this.response:
             this.response = ErrorCode.OK
-            this.response[1] = await Helpers.tzBot.db.getUserByAlias(this.alias)
-            if this.response[1] in {"", None}:
+            this.response.message = await Helpers.tzBot.db.getUserByAlias(this.alias)
+            if not this.response.message:
                 this.response = ErrorCode.NOT_FOUND
 
         await this.respond()
@@ -102,8 +102,8 @@ class TimeZoneFromAliasRequest(AliasRequest):
 
         if not this.response:
             this.response = ErrorCode.OK
-            this.response[1] = await Helpers.tzBot.db.getTimeZoneByAlias(this.alias)
-            if this.response[1] in {"", None}:
+            this.response.message = await Helpers.tzBot.db.getTimeZoneByAlias(this.alias)
+            if not this.response.message:
                 this.response = ErrorCode.NOT_FOUND
 
         await this.respond()
@@ -120,17 +120,17 @@ class TimeZoneFromIPRequest(APIRequest):
         await super().process()
 
         if not this.response:
-            if this.askedIp in {None, ""}:
+            if not this.askedIp:
                 this.response = ErrorCode.BAD_REQUEST
             else:
                 try:
                     requestCity = Helpers.tzBot.maxMindDb.city(this.askedIp)
-                    if requestCity is None:
+                    if not requestCity:
                         this.response = ErrorCode.NOT_FOUND
                     else:
                         this.response = ErrorCode.OK
-                        this.response[1] = requestCity.location.time_zone
-                        if not this.response[1]:
+                        this.response.message = requestCity.location.time_zone
+                        if not this.response.message:
                             this.response = ErrorCode.NOT_FOUND
 
                 except geoip2.errors.AddressNotFoundError as e:
@@ -198,7 +198,7 @@ class TimeZoneOverridesPost(APIRequest):
 
             if errorMsgs:
                 this.response = ErrorCode.BAD_REQUEST
-                this.response[1] = ", ".join(errorMsgs)
+                this.response.message = ", ".join(errorMsgs)
                 await this.respond()
                 return
 
@@ -219,7 +219,7 @@ class TimeZoneOverridesGet(APIRequest):
 
         if not this.response:
             this.response = ErrorCode.OK
-            this.response[1] = await Helpers.tzBot.db.getTzOverrides()
+            this.response.message = await Helpers.tzBot.db.getTzOverrides()
 
         await this.respond()
 
@@ -262,7 +262,7 @@ class UserIdUUIDLinkPost(UUIDRequest):
                 return
 
             if await Helpers.tzBot.db.getUserIdByUUID(this.uuid) or this.uuid in [val[0] for val in Helpers.tzBot.linkCodes.values()]:
-                this.response = ErrorCode.NOT_FOUND
+                this.response = ErrorCode.CONFLICT
                 this.response[1] = "UUID already registered"
                 await this.respond()
                 return
@@ -333,5 +333,38 @@ class ImageRequest(APIRequest):
             this.response[1] = base64.b64encode(await f.read()).decode()
             Path.unlink(Path("output.bmp"), missing_ok=True)
             Path.unlink(Path("output.png"), missing_ok=True)
+
+        await this.respond()
+
+
+class IsLinkedRequest(UUIDRequest):
+    def __init__(self, client: Client, headers: dict, data: dict) -> None:
+        super().__init__(client, headers, data, ApiPermissions.MINECRAFT_UUID)
+
+    async def process(this) -> None:
+        await super().process()
+
+        if not this.response:
+            if await Helpers.tzBot.db.getTimezoneByUUID(this.uuid):
+                this.response = ErrorCode.OK
+            else:
+                this.response = ErrorCode.NOT_FOUND
+
+        await this.respond()
+
+
+class UserIDFromUUIDRequest(UUIDRequest):
+    def __init__(self, client: Client, headers: dict, data: dict) -> None:
+        super().__init__(client, headers, data, ApiPermissions.MINECRAFT_UUID, ApiPermissions.DISCORD_ID)
+
+    async def process(this) -> None:
+        await super().process()
+
+        if not this.response:
+            if not (userId := await Helpers.tzBot.db.getUserIdByUUID(this.uuid)):
+                this.response = ErrorCode.NOT_FOUND
+            else:
+                this.response = ErrorCode.OK
+                this.response[1] = userId
 
         await this.respond()

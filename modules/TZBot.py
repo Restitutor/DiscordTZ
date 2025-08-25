@@ -28,7 +28,7 @@ class TZBot(commands.Bot):
 
         this.ownerId = this.config.ownerId
         this.linkCodes: dict[str, tuple[str, str]] = {}
-        this.db: Database = Database(this.config.dbFilename)
+        this.db: Database = Database(this.config.dbFilename, this.config.mariadbDetails)
         this.apiDb = ApiKeyDatabase(this.config.server.apiKeysKey)
         this.maxMindDb: geoip2.database.Reader = geoip2.database.Reader("GeoLite2-City.mmdb")
 

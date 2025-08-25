@@ -1,71 +1,80 @@
 #!/usr/bin/env python3
 import asyncio
-import os
 import shutil
-import subprocess
 import time
 from pathlib import Path
 
 import aiofiles
+import aiohttp
 import discord
-import requests
 
 from config.Config import Config, MaxmindConfig
-from database.DatabaseSyncer import SQLiteToMariaDBSync
 from modules.TZBot import TZBot
 from server.SocketServer import SocketServer
 from shell.Logger import Logger
 from shell.Shell import Shell
 
 
-def getGeoIP(conf: MaxmindConfig) -> None:
+async def getGeoIP(conf: MaxmindConfig) -> None:
     day = 86400
-    dbStats = Path.stat(Path("GeoLite2-City.mmdb")) if Path("GeoLite2-City.mmdb").is_file() else None
-    if dbStats is not None:
-        currentTime = time.time()
-        secondsDiff = currentTime - dbStats.st_ctime
-        if secondsDiff < day:
+    mmdbPath = Path("GeoLite2-City.mmdb")
+
+    if mmdbPath.is_file():
+        current_time = time.time()
+        seconds_diff = current_time - mmdbPath.stat().st_ctime
+        if seconds_diff < day:
             Logger.log("Skipping GeoLite2 database download, it was updated less than 24 hours ago.")
             return
 
     Logger.log("Downloading GeoLite2 database...")
-    response = requests.get(
-        "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz",
-        auth=(str(conf.accountId), conf.token),
-        stream=True,
-        timeout=3,
+
+    url = "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz"
+    auth = aiohttp.BasicAuth(str(conf.accountId), conf.token)
+
+    async with aiohttp.ClientSession(auth=auth) as session, session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+        if response.status != 200:  # noqa: PLR2004
+            Logger.error(f"Failed to download GeoLite2 database: HTTP {response.status}")
+            return
+
+        async with aiofiles.open("GeoLite2-City.tar.gz", "wb") as file:
+            content = await response.read()
+            await file.write(content)
+
+    Path("GeoLite2-City").mkdir(exist_ok=True)
+
+    proc = await asyncio.create_subprocess_exec(
+        "/usr/bin/tar", "-xf", "GeoLite2-City.tar.gz", "-C", "GeoLite2-City", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
+    await proc.communicate()
 
-    with open("GeoLite2-City.tar.gz", "wb") as file:
-        file.write(response.content)
+    extractedDir = Path("GeoLite2-City")
+    subdirs = [d for d in extractedDir.iterdir() if d.is_dir()]
+    if subdirs:
+        mmdbSource = subdirs[0] / "GeoLite2-City.mmdb"
+        if mmdbSource.exists():
+            shutil.move(str(mmdbSource), "GeoLite2-City.mmdb")
 
-    Path.mkdir(Path("GeoLite2-City"))
-    subprocess.run(["/usr/bin/tar", "-xf", "GeoLite2-City.tar.gz", "-C", "GeoLite2-City"], check=False)
-    shutil.move(f"GeoLite2-City/{os.listdir('GeoLite2-City')[0]}/GeoLite2-City.mmdb", "GeoLite2-City.mmdb")  # noqa: PTH208
-    Path.unlink(Path("GeoLite2-City.tar.gz"))
-    shutil.rmtree("GeoLite2-City")
+    Path("GeoLite2-City.tar.gz").unlink(missing_ok=True)
+    shutil.rmtree("GeoLite2-City", ignore_errors=True)
 
 
 async def main() -> None:
     async with aiofiles.open("config.json") as f:
         config: Config = Config.schema().loads(await f.read())
 
-    shell = Shell()
-    shellTask = asyncio.create_task(shell.run_async())
+    shellTask = asyncio.create_task(Shell().run_async())
+    await getGeoIP(config.maxmind)
 
-    getGeoIP(config.maxmind)
     serverStarter = asyncio.create_task(SocketServer(config.server).start())
 
-    syncTask = asyncio.create_task(SQLiteToMariaDBSync.cronJob("timezones.sqlite", config.mariadbDetails))
-
     client = TZBot(config, command_prefix="tz!", help_command=None, intents=discord.Intents.all())
-    async with client:
-        await client.start(config.token)
+    botTask = asyncio.create_task(client.start(config.token))
 
-    tasks = await asyncio.gather(serverStarter, shellTask, syncTask, return_exceptions=True)
-    for result in tasks:
-        if isinstance(result, Exception):
-            Logger.log(f"Task failed: {result}")
+    tasks = [serverStarter, shellTask, botTask]
+    try:
+        await asyncio.gather(*tasks)
+    except Exception as e:  # noqa: BLE001
+        Logger.error(f"Unhandled exception: {e}")
 
 
 asyncio.run(main())

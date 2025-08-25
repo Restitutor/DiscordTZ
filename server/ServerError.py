@@ -1,5 +1,7 @@
 import copy
 
+from protocol.Response import Response
+
 
 class DeepCopier(type):
     def __getattribute__(cls, name: str) -> object:
@@ -7,10 +9,10 @@ class DeepCopier(type):
 
 
 class ErrorCode(metaclass=DeepCopier):
-    OK = [200, "OK"]
-    BAD_REQUEST = [400, "Bad Request"]
-    FORBIDDEN = [403, "Forbidden"]
-    NOT_FOUND = [404, "Not Found"]
-    BAD_METHOD = [405, "Bad Method"]
-    INTERNAL_SERVER_ERROR = [500, "Internal Server Error"]
-    CONFLICT = [409, "Conflict"]
+    OK = Response(200, "OK")
+    BAD_REQUEST = Response(400, "Bad Request")
+    FORBIDDEN = Response(403, "Forbidden")
+    NOT_FOUND = Response(404, "Not Found")
+    BAD_METHOD = Response(405, "Bad Method")
+    INTERNAL_SERVER_ERROR = Response(500, "Internal Server Error")
+    CONFLICT = Response(409, "Conflict")

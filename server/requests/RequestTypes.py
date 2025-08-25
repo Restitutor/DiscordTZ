@@ -5,6 +5,7 @@ from server.requests.Requests import (
     AliasFromUserRequest,
     CommandRequest,
     HelloRequest,
+    IsLinkedRequest,
     PingRequest,
     TimeZoneFromAliasRequest,
     TimeZoneFromIPRequest,
@@ -14,6 +15,7 @@ from server.requests.Requests import (
     TimeZoneOverridesPost,
     TimeZoneRequest,
     UserFromAliasRequest,
+    UserIDFromUUIDRequest,
     UserIdUUIDLinkPost,
 )
 
@@ -32,6 +34,8 @@ class RequestType(Enum):
     USER_ID_UUID_LINK_POST = UserIdUUIDLinkPost
     TIMEZONE_FROM_UUID = TimezoneFromUUIDRequest
     TIMEZONE_OVERRIDE_REMOVE = TimeZoneOverrideRemove
+    IS_LINKED = IsLinkedRequest
+    USER_ID_FROM_UUID = UserIDFromUUIDRequest
 
     def __call__(this, *args, **kwargs) -> SimpleRequest:
         return this.value(*args, **kwargs)
