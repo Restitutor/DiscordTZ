@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 
 from config.Config import ServerConfig
 from database.DataDatabase import Database
@@ -31,7 +32,7 @@ class SocketServer:
         this.transport = transport
         try:
             async with tcpServer:
-                Logger.log("Servers running!")
+                Logger.success("Servers running!")
                 await asyncio.Future()
         except asyncio.CancelledError:
             Logger.log("Servers shutting down!")
@@ -81,25 +82,26 @@ class SocketServer:
             Logger.log(f"Got an encrypted {protocol} request: {jsonRequest}")
             client.encrypt = True
 
-        payload: dict | None = jsonRequest.get("data")
+        payload: dict | None = jsonRequest.get("data", {})
         requestType: str | None = jsonRequest.get("requestType")
 
-        if requestType and payload:
-            jsonData = jsonRequest.pop("data")
+        if requestType:
+            with contextlib.suppress(KeyError):
+                jsonRequest.pop("data")
 
             try:
                 reqType: RequestType = getattr(RequestType, requestType)
             except AttributeError:
                 Logger.error(f"Invalid request type: {requestType}, defaulting to SimpleRequest")
 
-                request = SimpleRequest(client, jsonRequest, jsonData)
+                request = SimpleRequest(client, jsonRequest, payload)
                 await request.process()
                 return
 
             try:
-                request = reqType(client, jsonRequest, jsonData)
+                request = reqType(client, jsonRequest, payload)
                 await request.process()
 
             except PermissionError as e:
                 Logger.error(f"{e.args[0]}")
-                SimpleRequest(client, jsonRequest, jsonData)
+                SimpleRequest(client, jsonRequest, payload)

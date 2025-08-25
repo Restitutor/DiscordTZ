@@ -14,7 +14,7 @@ class UDPClient(Client):
         if this.encrypt:
             data = RSAEncrypt(data, this.rsaKey) if this.rsaKey is not None else AESEncrypt(data, this.aesKey)
 
-        this.transport.sendto(data, this.ip)
+        this.transport.sendto(data, tuple(this.ip))
 
 
 class UDPProtocol(asyncio.DatagramProtocol):

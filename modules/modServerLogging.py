@@ -13,26 +13,26 @@ from shared import Helpers
 
 async def createBasicEmbed(request: SimpleRequest, template: discord.Embed) -> tuple[discord.Embed, list[discord.File]] | tuple[None, None]:
     if request.__class__.__name__ in {"PingRequest", "HelloRequest", "KeyRenewRequest"}:
-        return (None, None)
+        return None, None
 
     hosts = await Helpers.getHosts()
 
     if request.city is not None:
         country = request.city.country.iso_code
 
-    elif request.client.ip[0] == "127.0.0.1":
-        with aiofiles.open("/etc/hostname") as f:
-            country = f.read().capitalize()
+    elif request.client.ip.address == "127.0.0.1":
+        async with aiofiles.open("/etc/hostname") as f:
+            country = (await f.read()).capitalize()
 
-    elif request.client.ip[0] in hosts:
-        country = hosts[request.client.ip[0]].capitalize()
+    elif request.client.ip.address in hosts:
+        country = hosts[request.client.ip.address].capitalize()
 
     else:
         country = "Local"
 
     requestData: str = str(request.data)
     packetName: str = request.headers["requestType"]
-    response: dict = {"message": request.response[1], "code": request.response[0]}
+    response: dict = {"message": request.response.message, "code": request.response.code}
 
     description = "\n".join(
         [
