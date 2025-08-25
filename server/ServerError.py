@@ -1,6 +1,6 @@
 import copy
 
-from protocol.Response import Response
+from server.protocol.Response import Response
 
 
 class DeepCopier(type):
