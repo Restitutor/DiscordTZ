@@ -1,3 +1,4 @@
+import contextlib
 from textwrap import dedent
 
 import aiofiles
@@ -78,8 +79,9 @@ class Help(commands.Cog):
                         continue
 
                     for command in cmdGroup.commands:
-                        if command.name != commandname and command.name != commandname.split(" ")[1]:
-                            continue
+                        with contextlib.suppress(IndexError):
+                            if command.name != commandname or command.name != commandname.split(" ")[1]:
+                                continue
 
                         embed.add_field(
                             name="**Command Info**",

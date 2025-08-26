@@ -1,6 +1,6 @@
 [
   {
-    "name": "MathImageGen",
+    "name": "Image",
     "cmdGroups": [
       {
         "name": "",
@@ -35,6 +35,14 @@
                 "defaultValue": "0"
               }
             ]
+          },
+          {
+            "requiredPerms": 0,
+            "name": "color",
+            "description": "Generate a random unique (or not unique) color! Uses crypto random",
+            "help": "Generates a random unique (or not unique) color. Might be duplicate in which case it shows you the probability of this happening.",
+            "cooldown": 3,
+            "args": []
           }
         ]
       }

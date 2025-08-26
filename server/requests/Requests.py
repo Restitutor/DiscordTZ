@@ -35,11 +35,11 @@ class HelloRequest(SimpleRequest):
                 except ValueError as e:
                     Logger.error(f"Failed to import client's RSA public key: {e}")
                     this.response = ErrorCode.BAD_REQUEST
-                    this.response[1] = "Bad RSA public key"
+                    this.response.message = "Bad RSA public key"
 
             else:
                 this.response = ErrorCode.BAD_REQUEST
-                this.response[1] = "No RSA public key"
+                this.response.message = "No RSA public key"
 
             this.client.encrypt = True
         await this.respond()
@@ -149,7 +149,7 @@ class PingRequest(SimpleRequest):
 
         if not this.response:
             this.response = ErrorCode.OK
-            this.response[1] = "Pong"
+            this.response.message = "Pong"
 
         await this.respond()
 
@@ -167,7 +167,7 @@ class CommandRequest(APIRequest):
         await super().process()
 
         this.response = ErrorCode.INTERNAL_SERVER_ERROR
-        this.response[1] = "Not implemented."
+        this.response.message = "Not implemented."
 
         await this.respond()
         # if this.response is None:
@@ -263,7 +263,7 @@ class UserIdUUIDLinkPost(UUIDRequest):
 
             if await Helpers.tzBot.db.getUserIdByUUID(this.uuid) or this.uuid in [val[0] for val in Helpers.tzBot.linkCodes.values()]:
                 this.response = ErrorCode.CONFLICT
-                this.response[1] = "UUID already registered"
+                this.response.message = "UUID already registered"
                 await this.respond()
                 return
 
@@ -273,7 +273,7 @@ class UserIdUUIDLinkPost(UUIDRequest):
             asyncio.create_task(Helpers.tzBot.removeCode(15, this.code))
 
             this.response = ErrorCode.OK
-            this.response[1] = this.code
+            this.response.message = this.code
 
         await this.respond()
 
@@ -293,7 +293,7 @@ class TimezoneFromUUIDRequest(UUIDRequest):
                 return
 
             this.response = ErrorCode.OK
-            this.response[1] = timezone
+            this.response.message = timezone
 
         await this.respond()
 
@@ -311,7 +311,7 @@ class ImageRequest(APIRequest):
 
         if not Path("BMPGen").is_file():
             this.response = ErrorCode.INTERNAL_SERVER_ERROR
-            this.response[1] = "Unsupported feature"
+            this.response.message = "Unsupported feature"
             await this.respond()
             return
 
@@ -319,7 +319,7 @@ class ImageRequest(APIRequest):
             subprocess.run(["./BMPGen", "-r", f"{this.r}", "-g", f"{this.g}", "-b", f"{this.b}"], check=True)  # noqa
         except subprocess.CalledProcessError:
             this.response = ErrorCode.BAD_REQUEST
-            this.response[1] = "There is a problem with your expression"
+            this.response.message = "There is a problem with your expression"
             await this.respond()
             return
 
@@ -330,7 +330,7 @@ class ImageRequest(APIRequest):
 
         async with aiofiles.open("output.png", "rb") as f:
             this.response = ErrorCode.OK
-            this.response[1] = base64.b64encode(await f.read()).decode()
+            this.response.message = base64.b64encode(await f.read()).decode()
             Path.unlink(Path("output.bmp"), missing_ok=True)
             Path.unlink(Path("output.png"), missing_ok=True)
 
@@ -365,6 +365,6 @@ class UserIDFromUUIDRequest(UUIDRequest):
                 this.response = ErrorCode.NOT_FOUND
             else:
                 this.response = ErrorCode.OK
-                this.response[1] = userId
+                this.response.message = userId
 
         await this.respond()

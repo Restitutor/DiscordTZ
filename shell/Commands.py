@@ -258,7 +258,7 @@ class Load(Command):
 
 class Unload(Command):
     def __init__(this) -> None:
-        super().__init__("unload", "Loads a Discord bot module")
+        super().__init__("unload", "Unloads a Discord bot module")
 
     def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         client: TZBot = Helpers.tzBot
@@ -281,7 +281,7 @@ class Unload(Command):
 
 class ModList(Command):
     def __init__(this) -> None:
-        super().__init__("lsmod", "Loads a Discord bot module", aliases=["ml", "ls"])
+        super().__init__("lsmod", "Lists all modules and their status", aliases=["ml", "ls"])
 
     def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         client: TZBot = Helpers.tzBot
@@ -297,7 +297,7 @@ class ModList(Command):
 
 class ForceSync(Command):
     def __init__(this) -> None:
-        super().__init__("sync", "Loads a Discord bot module")
+        super().__init__("sync", "Force syncs to WSS")
 
     def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         client: TZBot = Helpers.tzBot

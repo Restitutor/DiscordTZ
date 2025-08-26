@@ -181,10 +181,12 @@ async def chinaResponse(request: SimpleRequest) -> None:
 async def sendResponse(request: SimpleRequest) -> None:
     if request.city is not None and request.city.country.iso_code in {"SG", "CN", "MO", "HK"}:
         await chinaResponse(request)
-    elif request.response.code == 200:  # noqa: PLR2004
-        request.commonEventHandler.triggerSuccess(request)
-    else:
         request.commonEventHandler.triggerError(request)
+    else:
+        if request.response.code == 200:  # noqa: PLR2004
+            request.commonEventHandler.triggerSuccess(request)
+        else:
+            request.commonEventHandler.triggerError(request)
+        request.client.send(json.dumps(request.response.__dict__).encode())
 
     Logger.log(f"Responding with: {request.response.__dict__}")
-    request.client.send(json.dumps(request.response.__dict__).encode())

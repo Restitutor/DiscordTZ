@@ -100,11 +100,8 @@ class Shell(Application):
             window.vertical_scroll = maxScroll
             this.invalidate()
 
-    def cmdAcceptHandler(this, buffer: Buffer) -> bool:
-        text = buffer.text.strip()
-
-        if not text:
-            return True
+    def cmdAcceptHandler(this, buffer: Buffer | str) -> bool:
+        text = buffer.text.strip() if isinstance(buffer, Buffer) else buffer
 
         buffer.history.append_string(text)
         result = this.commandRegistry.executeCommand(text, this.commandContext)

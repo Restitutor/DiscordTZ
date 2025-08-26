@@ -66,9 +66,9 @@ async def isLocalSubnet(ip: str) -> bool:
     return bool(ipRegex.match(ip))
 
 
-async def isUUID(uuid: str) -> bool:
+async def isUUID(uniqueId: str) -> bool:
     pattern = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
-    return bool(pattern.match(uuid))
+    return bool(pattern.match(uniqueId))
 
 
 async def generateCharSequence(n: int) -> str:
@@ -82,18 +82,24 @@ async def parseJson(data: str) -> dict | None:
         return None
 
 
-async def generateImage(r: str, g: str, b: str) -> bytes:
+async def generateImage(r: str, g: str, b: str) -> bool:
     if not Path("BMPGen").is_file():
-        return b"-1"
+        Logger.error("BMPGen is not present!")
+        return False
 
-    process = await asyncio.create_subprocess_exec(
+    bmpGen = await asyncio.create_subprocess_exec(
         "./BMPGen", "-r", f"{r}", "-g", f"{g}", "-b", f"{b}", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
-    await process.communicate()
-    if process.returncode != 0:
-        return b"-2"
+    stdout, stderr = await bmpGen.communicate()
 
-    await asyncio.create_subprocess_exec(
+    if bmpGen.returncode != 0:
+        Logger.error(f"There was an error generating BMP image. Return code: {bmpGen.returncode}; stderr: {stderr.decode('utf-8', errors='ignore')}")
+        Logger.error(f"Red: {r}")
+        Logger.error(f"Green: {g}")
+        Logger.error(f"Blue: {b}")
+        return False
+
+    magick = await asyncio.create_subprocess_exec(
         "/usr/bin/magick",
         "output.bmp",
         "-define",
@@ -104,14 +110,16 @@ async def generateImage(r: str, g: str, b: str) -> bytes:
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    await process.communicate()
+    stdout, stderr = await magick.communicate()
 
-    async with aiofiles.open("output.png", "rb") as f:
-        buf = await f.read()
-        Path.unlink(Path("output.bmp"), missing_ok=True)
-        Path.unlink(Path("output.png"), missing_ok=True)
+    if magick.returncode != 0:
+        Logger.error(
+            f"There was an error with conversion from BMP to PNG. Return code: {magick.returncode}; stderr: {stderr.decode('utf-8', errors='ignore')}"
+        )
+        return False
 
-    return buf
+    Path.unlink(Path("output.bmp"), missing_ok=True)
+    return True
 
 
 tzBot = None
