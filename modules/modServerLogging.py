@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import io
 
 import aiofiles
 import discord
@@ -50,12 +51,11 @@ async def createBasicEmbed(request: SimpleRequest, template: discord.Embed) -> t
 
     else:
         template.add_field(name="Request Data", value="Request is included in the file below due to its size.", inline=False)
-        async with aiofiles.open("request.txt", "w") as file:
+        async with aiofiles.open("request.txt", "w+") as file:
             await file.write(requestData)
+            requestFile = discord.File(io.BytesIO(str(await file.read()).encode("utf-8")), "requestdata.json")
 
-        with open("request.txt", "rb") as file:  # noqa: ASYNC230
-            requestFile = discord.File(file)
-            fileSendList.append(requestFile)
+        fileSendList.append(requestFile)
 
     if len(str(response)) <= maxDataEmbedLen:
         template.add_field(name="Response Data", value=f"```{response!s}```", inline=False)
@@ -63,16 +63,16 @@ async def createBasicEmbed(request: SimpleRequest, template: discord.Embed) -> t
     else:
         template.add_field(name="Response Data", value="Response is included in the file below due to its size.", inline=False)
 
-        async with aiofiles.open("response.txt", "w") as file:
+        async with aiofiles.open("response.txt", "w+") as file:
             await file.write(str(response))
-        with open("response.txt", "rb") as file:  # noqa: ASYNC230
-            responseFile = discord.File(file)
-            fileSendList.append(responseFile)
+            responseFile = discord.File(io.BytesIO(str(await file.read()).encode("utf-8")), "responsedata.json")
+
+        fileSendList.append(responseFile)
 
     template.description = description
     template.timestamp = datetime.datetime.now()
 
-    return (template, fileSendList)
+    return template, fileSendList
 
 
 class ServerLogging(commands.Cog):
