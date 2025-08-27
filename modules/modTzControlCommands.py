@@ -112,8 +112,13 @@ class TzCommands(commands.Cog):
         utcOffset = theirTime.strftime("%z")
         formattedOffset = f"GMT{utcOffset[:3]}:{utcOffset[3:]}"
         timeFormatted = theirTime.strftime(
-            f"{person.display_name}'s time: %A, %d.%m.%Y %H:%M | %m/%d/%Y %I:%M %p \
-        ({formattedOffset} | {zoneName.replace('_', ' ')})\nYour time: <t:{int(theirTime.timestamp())}:F>"
+            " ".join(
+                [
+                    f"{person.display_name}'s time: %A, %d.%m.%Y %H:%M | %m/%d/%Y %I:%M %p",
+                    f"({formattedOffset} | {zoneName.replace('_', ' ')})",
+                    f"\nYour time: <t:{int(theirTime.timestamp())}:F>",
+                ]
+            )
         )
 
         await ctx.response.send_message(timeFormatted)
@@ -122,8 +127,7 @@ class TzCommands(commands.Cog):
     async def nowTz(this, ctx: discord.ApplicationContext, timezone: discord.Option(str, "Timezone to show", autocomplete=getTimezones)) -> None:
         if timezone not in checkList:
             await ctx.response.send_message(
-                "Invalid timezone. Use [this table]\
-            (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for reference.",
+                "Invalid timezone. Use [this table] (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for reference.",
                 ephemeral=True,
             )
 
@@ -139,8 +143,13 @@ class TzCommands(commands.Cog):
         utcOffset = requestedTime.strftime("%z")
         formattedOffset = f"GMT{utcOffset[:3]}:{utcOffset[3:]}"
         timeFormatted = requestedTime.strftime(
-            f"Time in {timezone.split('/')[1].replace('_', ' ')}:\
-         %A, %d.%m.%Y %H:%M | %m/%d/%Y %I:%M %p ({formattedOffset})\nYour time: <t:{int(requestedTime.timestamp())}:F>"
+            " ".join(
+                [
+                    f"Time in {timezone.split('/')[1].replace('_', ' ')}:",
+                    f"%A, %d.%m.%Y %H:%M | %m/%d/%Y %I:%M %p ({formattedOffset})",
+                    f"\nYour time: <t:{int(requestedTime.timestamp())}:F>",
+                ]
+            )
         )
 
         await ctx.response.send_message(timeFormatted)
