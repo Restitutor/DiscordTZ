@@ -12,8 +12,8 @@ class Client:
         this.aesKey: bytes = aesKey
         this.encrypt = False
 
-    def send(this, data: bytes) -> None:
+    async def send(this, data: bytes) -> None:
         pass
 
-    def close(this) -> None:
+    async def close(this) -> None:
         pass

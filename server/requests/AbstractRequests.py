@@ -187,6 +187,6 @@ async def sendResponse(request: SimpleRequest) -> None:
             request.commonEventHandler.triggerSuccess(request)
         else:
             request.commonEventHandler.triggerError(request)
-        request.client.send(json.dumps(request.response.__dict__).encode())
+        await request.client.send(json.dumps(request.response.__dict__).encode())
 
     Logger.log(f"Responding with: {request.response.__dict__}")

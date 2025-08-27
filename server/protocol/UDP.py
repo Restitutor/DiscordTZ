@@ -10,7 +10,7 @@ class UDPClient(Client):
         super().__init__(ipAddress, aesKey)
         this.transport: asyncio.DatagramTransport = transport
 
-    def send(this, data: bytes) -> None:
+    async def send(this, data: bytes) -> None:
         if this.encrypt:
             data = RSAEncrypt(data, this.rsaKey) if this.rsaKey is not None else AESEncrypt(data, this.aesKey)
 
