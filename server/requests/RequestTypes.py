@@ -39,10 +39,3 @@ class RequestType(Enum):
 
     def __call__(this, *args, **kwargs) -> SimpleRequest:
         return this.value(*args, **kwargs)
-
-    @classmethod
-    def get(cls, value: str) -> SimpleRequest | None:
-        for member in cls:
-            if value in (member.value, member.value.__name__):
-                return member
-        return None

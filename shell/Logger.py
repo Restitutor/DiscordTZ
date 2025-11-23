@@ -1,9 +1,10 @@
 import datetime
 from collections.abc import Callable
+from typing import ClassVar
 
 
 class Logger:
-    logFunc: Callable = print
+    _logFunc: ClassVar[Callable] = print
 
     @classmethod
     def setLogFunction(cls, logFunc: Callable) -> None:
@@ -23,3 +24,8 @@ class Logger:
     def success(message: object) -> None:
         timeNow: str = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         Logger._logFunc(f"[{timeNow}] [SUCCESS] {message}")
+
+    @staticmethod
+    def warning(message: object) -> None:
+        timeNow: str = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+        Logger._logFunc(f"[{timeNow}] [WARNING] {message}")

@@ -5,7 +5,7 @@ import string
 from enum import IntFlag
 
 from server.ServerCrypto import AESDecrypt, AESEncrypt
-from shared import Helpers
+from shared.Helpers import Helpers
 
 
 class ApiPermissions(IntFlag):

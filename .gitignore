@@ -9,3 +9,5 @@ packetsender.py
 IfFormatter.py
 .tzhistory
 timezones.sqlite
+*.ttc
+*.ttf

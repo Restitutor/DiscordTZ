@@ -1,61 +1,208 @@
 import asyncio
 import contextlib
+import copy
+import datetime
 import json
-import pathlib
+import re
+import tarfile
+import time
+from copy import deepcopy
+from pathlib import Path
+from typing import Final, Dict, Set, AsyncGenerator, Tuple
 
-import aiofiles
 import discord
 import geoip2
-from discord import ExtensionAlreadyLoaded, ExtensionFailed, ExtensionNotFound, ExtensionNotLoaded, NoEntryPointError
-from discord.ext import commands
+import maxminddb.errors
+from aiohttp import ClientSession, BasicAuth, ClientResponseError
+from discord import ExtensionAlreadyLoaded, ExtensionFailed, ExtensionNotFound, ExtensionNotLoaded, NoEntryPointError, \
+    User, Option, SlashCommand
+from discord.ext import bridge
+from discord.ext.bridge import BridgeSlashCommand
+from discord.ext.commands import errors
 from geoip2 import database  # noqa: F401
+from six import BytesIO
 
 from config.Config import Config
 from database.APIKeyDatabase import ApiKeyDatabase
 from database.DataDatabase import Database
-from shared import Helpers
+from database.stats.StatsDatabase import StatsDatabase
+from modules.helplib.Command import Command
+from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
-class TZBot(commands.Bot):
+class TZBot(bridge.Bot):
     loadedModules: list[str] = []
+    loadedCommands: list[Command] = []
 
-    def __init__(this, config: Config, **kwargs) -> None:
+    CONFIG_FILE: Final[Path] = Path("config.json")
+    DIALOG_OWNERS_FILE: Final[Path] = Path("state/dialogOwners.json")
+    MODULES_DIR: Final[Path] = Path("modules/")
+
+    GEO_IP_DB_FILE: Final[Path] = Path("state/GeoLite2-City.mmdb")
+    GEO_IP_URL: Final[str] = "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz"
+    DAY_SECONDS: Final[int] = 86_400
+
+    IMAGE_CONTENT_TYPES: Final[Set[str]] = {"image/bmp", "image/png", "image/jpeg", "image/webp"}
+    HTTP_HEADERS: Final[Dict[str, str]] = {
+        "User-Agent": "TZUtil",
+        "Accept": "text/html,application/xhtml+xml,application/xml",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, zstd"
+    }
+
+    SUCCESS: Final[discord.Embed] = discord.Embed(title="**Success!**", description="The operation was successful!", color=discord.Color.green())
+    FAIL: Final[discord.Embed] = discord.Embed(title="**Something went wrong.**", description="There was an error in the operation.", color=discord.Color.red())
+
+    SORRY_REGEX: Final[re.Pattern] = re.compile(r"sorry", re.IGNORECASE)
+
+    syncOverride: bool = False
+
+    def __init__(this, **kwargs) -> None:
         super().__init__(**kwargs)
-        this.config = config
+
+        with this.CONFIG_FILE.open("r") as f:
+            this.config: Config = Config.schema().loads(f.read())
 
         Helpers.tzBot = this
 
         this.ownerId = this.config.ownerId
         this.linkCodes: dict[str, tuple[str, str]] = {}
-        this.db: Database = Database(this.config.dbFilename, this.config.mariadbDetails)
+        this.db: Database = Database(this.config.mariadbDetails)
         this.apiDb = ApiKeyDatabase(this.config.server.apiKeysKey)
-        this.maxMindDb: geoip2.database.Reader = geoip2.database.Reader("GeoLite2-City.mmdb")
+        try:
+            this.maxMindDb: geoip2.database.Reader = geoip2.database.Reader(this.GEO_IP_DB_FILE)
+        except maxminddb.errors.InvalidDatabaseError:
+            Logger.error("MaxMind DB is invalid, will fetch")
+            this.syncOverride = True
+
+        this.statsDb: Final[StatsDatabase] = StatsDatabase()
 
         try:
-            with open("dialogOwners.json") as f:
-                this.dialogOwners: list[int] = json.loads(f.read())
+            with this.DIALOG_OWNERS_FILE.open("r") as f:
+                this.dialogOwners: set[int] = set(json.loads(f.read()))
         except json.JSONDecodeError:
-            this.dialogOwners: list[int] = []
+            this.dialogOwners: set[int] = set()
 
-        this.success: discord.Embed = discord.Embed(title="**Success!**", description="The operation was successful!", color=discord.Color.green())
-        this.fail: discord.Embed = discord.Embed(
-            title="**Something went wrong.**", description="There was an error in the operation.", color=discord.Color.red()
-        )
+    # Command Response
+    async def getSuccess(this, *, description: str | None = None, user: discord.User | None = None) -> discord.Embed:
+        successCpy = copy.deepcopy(this.SUCCESS)
+        successCpy.timestamp = datetime.datetime.now()
+        if user:
+            successCpy.set_footer(text=user.name, icon_url=user.avatar.url)
+        if description:
+            successCpy.description = description
+
+        return successCpy
+
+    async def getFail(this, *, description: str | None = None, user: discord.User | None = None) -> discord.Embed:
+        failCpy = copy.deepcopy(this.FAIL)
+        failCpy.timestamp = datetime.datetime.now()
+        if user:
+            failCpy.set_footer(text=user.name, icon_url=user.avatar.url)
+        if description:
+            failCpy.description = description
+
+        return failCpy
+
+    # HTTP Client
+    @contextlib.asynccontextmanager
+    async def getNewClient(this, contentTypes: Set[str]) -> AsyncGenerator[ClientSession]:
+        headersCpy = deepcopy(this.HTTP_HEADERS)
+        headersCpy["Accept"] = ",".join(contentTypes)
+        session = ClientSession(headers=headersCpy)
+        try:
+            yield session
+        finally:
+            await session.close()
+
+    # Internet shit
+    async def downloadFile(this, url: str, contentTypes: Set[str]) -> Tuple[str, bytes] | None:
+        Logger.log(f"Downloading from {url}")
+        try:
+            async with this.getNewClient(contentTypes) as session:
+                async with session.get(url) as response:
+                    if response.status == 200 and response.content_type in contentTypes:
+                        Logger.success("Download was successful!")
+                        return response.content_type, await response.read()
+
+                    else:
+                        Logger.error(f"Download failed! Content type: {response.content_type}; Code: {response.status}")
+                        Logger.error(await response.read())
+                        return None
+        except ClientResponseError as e:
+            Logger.error(f"Download failed!")
+            Logger.error(e)
+
+    async def syncGeoIP(this):
+        if not this.syncOverride:
+            if this.GEO_IP_DB_FILE.is_file():
+                currentTime = time.time()
+                secondsDiff = currentTime - this.GEO_IP_DB_FILE.stat().st_ctime
+                if secondsDiff < this.DAY_SECONDS:
+                    Logger.log("Skipping GeoLite2 database download, it was updated less than 24 hours ago.")
+                    return
+
+        Logger.log("Downloading GeoLite2 database...")
+        async with this.getNewClient({"application/tar", "application/tar+gzip"}) as session:
+            async with session.get(this.GEO_IP_URL, auth=BasicAuth(str(this.config.maxmind.accountId), this.config.maxmind.token, "utf-8")) as response:
+                if response.status == 200:
+                    tarArchiveRaw = BytesIO(await response.read())
+                else:
+                    Logger.error(f"GeoIP failed! Content type: {response.content_type}; Code: {response.status}")
+
+        mmdb: bytes | None = None
+        with tarfile.open(fileobj=tarArchiveRaw, mode="r:*") as tar:
+            for member in tar:
+                if member.isfile() and member.name.endswith("GeoLite2-City.mmdb"):
+                    extracted = tar.extractfile(member)
+                    if extracted:
+                        mmdb = extracted.read()
+                    break
+
+        if not mmdb:
+            Logger.error("Failed to find the database file in the TAR.")
+            return
+
+        with this.GEO_IP_DB_FILE.open("wb") as f:
+            f.write(mmdb)
+
+        this.maxMindDb = geoip2.database.Reader(this.GEO_IP_DB_FILE)
+        Logger.success("Fresh GeoIP database fetched!")
 
     # WSS shit
-    async def on_connect(this) -> None:
-        await this.loadCogs()
+    async def startRunning(this) -> None:
+        await this.start(this.config.token)
 
-        this.errorChannel = await asyncio.create_task(this.fetch_channel(this.config.packetLogs.errorChannelId))
-        this.successChannel = await asyncio.create_task(this.fetch_channel(this.config.packetLogs.successChannelId))
+    async def on_connect(this) -> None:
+        await this.syncGeoIP()
+        await this.loadCogs()
+        await this.sync_commands()
+
+    async def on_application_command_error(this, ctx: discord.Interaction, error: discord.DiscordException) -> bool:
+        embed = await this.getFail(description="There was an error with the command's execution.", user=ctx.user)
+        await ctx.response.send_message(embed=embed, ephemeral=True)
+        return False
+
+    async def on_command_error(this, ctx: bridge.BridgeContext, exception: errors.CommandError) -> bool:
+        embed = await this.getFail(description="There was an error with the command's execution.")
+        await ctx.respond(embed=embed, ephemeral=True)
+        return False
 
     async def on_ready(this) -> None:
+        this.errorChannel = await this.fetch_channel(this.config.packetLogs.errorChannelId)
+        this.successChannel = await this.fetch_channel(this.config.packetLogs.successChannelId)
+
+        await this.refreshCommands()
         Logger.success("Discord Bot is online!")
+
+    # is_owner override
+    async def is_owner(this, user: User) -> bool:
+        return user.id == this.ownerId
 
     # Modules shit
     def getAvailableModules(this) -> list[str]:
-        return [file.stem[3:] for file in pathlib.Path("./modules").glob("mod*.py") if file.stem.startswith("mod")]
+        return [file.stem[3:] for file in this.MODULES_DIR.glob("mod*.py")]
 
     def getLoadedModules(this) -> list[str]:
         return this.loadedModules
@@ -63,76 +210,88 @@ class TZBot(commands.Bot):
     def getUnloadedModules(this) -> list[str]:
         return [module for module in this.getAvailableModules() if module not in this.loadedModules]
 
-    def unloadModules(this, modules: list[str]) -> None:
+    async def unloadModules(this, modules: list[str]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
-                asyncio.create_task(this.sync_commands(force=True))
                 raise ExtensionNotLoaded(f"Module {module} is not loaded")
 
             try:
                 this.unload_extension(f"modules.mod{module}")
                 this.loadedModules.remove(module)
-                Logger.success(f"Module {module} unloaded!")
             except (ExtensionNotFound, ExtensionNotLoaded) as e:
                 Logger.error(f"Failed to unload module {module}: {e}")
-                raise e  # noqa: TRY201
-            finally:
-                asyncio.create_task(this.sync_commands(force=True))
 
-    def loadModules(this, modules: list[str]) -> None:
+        await this.sync_commands(force=True)
+        await this.refreshCommands()
+        Logger.success(f"Module {", ".join(modules)} unloaded!")
+
+    async def loadModules(this, modules: list[str]) -> None:
         for module in modules:
             if module not in this.getUnloadedModules():
-                asyncio.create_task(this.sync_commands(force=True))
                 raise ExtensionAlreadyLoaded(f"Module {module} is loaded")
 
             try:
                 this.load_extension(f"modules.mod{module}")
                 this.loadedModules.append(module)
-                Logger.success(f"Module {module} loaded!")
             except (ExtensionNotFound, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionFailed) as e:
                 Logger.error(f"Failed to load module {module}: {e}")
-                raise e  # noqa: TRY201
-            finally:
-                asyncio.create_task(this.sync_commands(force=True))
 
-    def reloadModules(this, modules: list[str]) -> None:
+        await this.sync_commands(force=True)
+        await this.refreshCommands()
+        Logger.success(f"Modules {", ".join(modules)} loaded!")
+
+    async def reloadModules(this, modules: list[str]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
-                asyncio.create_task(this.sync_commands(force=True))
                 raise ExtensionNotLoaded(f"Module {module} is not loaded")
 
             try:
                 this.reload_extension(f"modules.mod{module}")
-                Logger.success(f"Module {module} reloaded!")
             except (ExtensionNotFound, ExtensionNotLoaded, NoEntryPointError, ExtensionFailed) as e:
                 Logger.error(f"Failed to reload module {module}: {e}")
-                raise e  # noqa: TRY201
-            finally:
-                asyncio.create_task(this.sync_commands(force=True))
+
+        await this.sync_commands(force=True)
+        await this.refreshCommands()
+        Logger.success(f"Module {", ".join(modules)} reloaded!")
 
     async def loadCogs(this) -> None:
-        this.loadedModules.extend(
-            [ext.split(".")[1][3:] for module in this.getAvailableModules() for ext in this.load_extension(f"modules.mod{module}")]
-        )
+        this.loadedModules.extend([ext.split(".")[1][3:] for module in this.getAvailableModules() for ext in this.load_extension(f"modules.mod{module}")])
         Logger.success(f"Modules {', '.join(this.loadedModules)} loaded!")
+
+    async def refreshCommands(this):
+        this.loadedCommands.clear()
+        for cmd in this.walk_application_commands():
+            if not isinstance(cmd, (SlashCommand, BridgeSlashCommand)):
+                continue
+
+            name: str = cmd.qualified_name
+            description: str = cmd.description
+            cooldown: float | None = None
+            if cmd.cooldown:
+                cooldown: float | None = cmd.cooldown.per
+            checks: list = cmd.checks
+            args: list[Option] = copy.deepcopy(cmd.options)
+
+            if isinstance(cmd, BridgeSlashCommand):
+                cmdHelpEntry = Command("tz!", name, description, cooldown, checks, args, f"`tz!{name}`")
+            else:
+                cmdHelpEntry = Command("/", name, description, cooldown, checks, args, cmd.mention)
+            this.loadedCommands.append(cmdHelpEntry)
 
     # Persistent UI shit
     async def addOwner(this, userId: int) -> None:
-        if userId in this.dialogOwners:
-            return
-
-        this.dialogOwners.append(userId)
-        async with aiofiles.open("dialogOwners.json", "w") as f:
-            await f.write(json.dumps(this.dialogOwners))
-
-    async def removeOwner(this, userId: int) -> None:
-        with contextlib.suppress(ValueError):
-            this.dialogOwners.remove(userId)
-            async with aiofiles.open("dialogOwners.json", "w") as f:
-                await f.write(json.dumps(this.dialogOwners))
+        this.dialogOwners.add(userId)
+        with this.DIALOG_OWNERS_FILE.open("w") as f:
+            f.write(json.dumps(list(this.dialogOwners)))
 
     # Verification code invalidifier
     async def removeCode(this, delay: int, code: str) -> None:
         await asyncio.sleep(delay * 60)
         with contextlib.suppress(KeyError):
             this.linkCodes.pop(code)
+
+    # Fun stuff
+    async def on_message(this, message: discord.Message) -> None:
+        await this.process_commands(message)
+        if message.author.id == this.ownerId and bool(this.SORRY_REGEX.search(message.content)):
+            await message.reply("🇨🇦", mention_author=False)

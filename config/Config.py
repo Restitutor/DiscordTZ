@@ -19,8 +19,6 @@ class MariaDBConfig:
     host: str
     port: int
     autocommit: bool
-    tzTableName: str
-    overridesTableName: str
 
     def __dict__(this) -> dict:
         return {
@@ -57,7 +55,6 @@ class Config:
     token: str
     ownerId: int
     maxmind: MaxmindConfig
-    dbFilename: str
     mariadbDetails: MariaDBConfig
     server: ServerConfig
     packetLogs: PacketLogsConfig

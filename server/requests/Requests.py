@@ -1,18 +1,16 @@
 import asyncio
 import base64
-import subprocess
-from pathlib import Path
 
-import aiofiles
 import geoip2.errors
 from Crypto.PublicKey import RSA
 
 from server.Api import ApiPermissions
-from server.protocol.Client import Client
-from server.requests.AbstractRequests import AliasRequest, APIRequest, SimpleRequest, UserIdRequest, UUIDRequest
 from server.ServerError import ErrorCode
-from shared import Helpers, Timezones
-from shared.Timezones import checkList
+from server.protocol.Client import Client
+from server.requests.AbstractRequests import AliasRequest, APIRequest, SimpleRequest, UserIdRequest, UUIDRequest, \
+    autoRespond
+from shared.Timezones import Timezones
+from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
@@ -21,6 +19,7 @@ class HelloRequest(SimpleRequest):
         super().__init__(client, headers, data)
         this.rsaPubKey: str | None = data.get("rsaPubKey")
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -42,13 +41,13 @@ class HelloRequest(SimpleRequest):
                 this.response.message = "No RSA public key"
 
             this.client.encrypt = True
-        await this.respond()
 
 
 class TimeZoneRequest(UserIdRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.DISCORD_ID)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -58,13 +57,12 @@ class TimeZoneRequest(UserIdRequest):
             if not this.response.message:
                 this.response = ErrorCode.NOT_FOUND
 
-        await this.respond()
-
 
 class AliasFromUserRequest(UserIdRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.DISCORD_ID, ApiPermissions.TZBOT_ALIAS)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -74,13 +72,12 @@ class AliasFromUserRequest(UserIdRequest):
             if not this.response.message:
                 this.response = ErrorCode.NOT_FOUND
 
-        await this.respond()
-
 
 class UserFromAliasRequest(AliasRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.DISCORD_ID, ApiPermissions.TZBOT_ALIAS)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -90,13 +87,12 @@ class UserFromAliasRequest(AliasRequest):
             if not this.response.message:
                 this.response = ErrorCode.NOT_FOUND
 
-        await this.respond()
-
 
 class TimeZoneFromAliasRequest(AliasRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.TZBOT_ALIAS)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -106,8 +102,6 @@ class TimeZoneFromAliasRequest(AliasRequest):
             if not this.response.message:
                 this.response = ErrorCode.NOT_FOUND
 
-        await this.respond()
-
 
 class TimeZoneFromIPRequest(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
@@ -116,6 +110,7 @@ class TimeZoneFromIPRequest(APIRequest):
         this.askedIp = str(this.data.get("ip"))
         this.data["ip"] = "<redacted>"
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -137,21 +132,18 @@ class TimeZoneFromIPRequest(APIRequest):
                     Logger.error(f"Error getting timezone from IP {this.askedIp}: {e!s}")
                     this.response = ErrorCode.BAD_REQUEST
 
-        await this.respond()
-
 
 class PingRequest(SimpleRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
         if not this.response:
             this.response = ErrorCode.OK
             this.response.message = "Pong"
-
-        await this.respond()
 
 
 class CommandRequest(APIRequest):
@@ -163,57 +155,47 @@ class CommandRequest(APIRequest):
         this.command = str(data.get("command"))
         this.args = data.get("args")
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
         this.response = ErrorCode.INTERNAL_SERVER_ERROR
         this.response.message = "Not implemented."
 
-        await this.respond()
-        # if this.response is None:
-        #     if this.command is None:
-        #         this.response = ErrorCode.BAD_REQUEST
-        #     else:
-        #         this.response = ErrorCode.OK
-        #         Shell.parseAndExec(this.command + " " + " ".join(this.args))
-
-        # await this.respond()
-
 
 class TimeZoneOverridesPost(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.TZ_OVERRIDES_POST)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
         if not this.response:
-            errorMsgs: list[str] = []
+            errorMsgs: set[str] = set()
             for uuid, timezone in this.data.items():
                 if not await Helpers.isUUID(uuid):
-                    errorMsgs.append(f"Invalid UUID: {uuid}")
+                    errorMsgs.add(f"Invalid UUID: {uuid}")
 
-                if timezone not in checkList:
-                    errorMsgs.append(f"Invalid timezone: {timezone}")
+                if timezone not in Timezones.CHECK_LIST:
+                    errorMsgs.add(f"Invalid timezone: {timezone}")
 
             if errorMsgs:
                 this.response = ErrorCode.BAD_REQUEST
-                this.response.message = ", ".join(errorMsgs)
-                await this.respond()
-                return
+                this.response.message = "; ".join(errorMsgs)
 
-            for uuid, timezone in this.data.items():
-                await Helpers.tzBot.db.addTzOverride(uuid, timezone)
+            else:
+                for uuid, timezone in this.data.items():
+                    await Helpers.tzBot.db.addTzOverride(uuid, timezone)
 
-            this.response = ErrorCode.OK
-
-        await this.respond()
+                this.response = ErrorCode.OK
 
 
 class TimeZoneOverridesGet(APIRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.TZ_OVERRIDES_GET)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -221,28 +203,23 @@ class TimeZoneOverridesGet(APIRequest):
             this.response = ErrorCode.OK
             this.response.message = await Helpers.tzBot.db.getTzOverrides()
 
-        await this.respond()
-
 
 class TimeZoneOverrideRemove(UUIDRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.TZ_OVERRIDES_POST)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
         if not this.response:
             if await Helpers.tzBot.db.getTzOverrideByUUID(this.uuid) in {None, ""}:
                 this.response = ErrorCode.NOT_FOUND
-                await this.respond()
-                return
 
-            if await Helpers.tzBot.db.removeTzOverride(this.uuid):
+            elif await Helpers.tzBot.db.removeTzOverride(this.uuid):
                 this.response = ErrorCode.OK
             else:
                 this.response = ErrorCode.INTERNAL_SERVER_ERROR
-
-        await this.respond()
 
 
 class UserIdUUIDLinkPost(UUIDRequest):
@@ -252,36 +229,33 @@ class UserIdUUIDLinkPost(UUIDRequest):
         super().__init__(client, headers, data, ApiPermissions.UUID_POST)
         this.timezone = this.data.get("timezone")
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
         if not this.response:
-            if this.timezone not in Timezones.checkList:
+            if this.timezone not in Timezones.CHECK_LIST:
                 this.response = ErrorCode.NOT_FOUND
-                await this.respond()
-                return
 
-            if await Helpers.tzBot.db.getUserIdByUUID(this.uuid) or this.uuid in [val[0] for val in Helpers.tzBot.linkCodes.values()]:
+            elif await Helpers.tzBot.db.getUserIdByUUID(this.uuid) or this.uuid in [val[0] for val in Helpers.tzBot.linkCodes.values()]:
                 this.response = ErrorCode.CONFLICT
                 this.response.message = "UUID already registered"
-                await this.respond()
-                return
 
-            this.code = await Helpers.generateCharSequence(6)
+            else:
+                this.code = await Helpers.generateCharSequence(6)
 
-            Helpers.tzBot.linkCodes.update({this.code: (this.uuid, this.timezone)})
-            asyncio.create_task(Helpers.tzBot.removeCode(15, this.code))
+                Helpers.tzBot.linkCodes.update({this.code: (this.uuid, this.timezone)})
+                asyncio.create_task(Helpers.tzBot.removeCode(15, this.code))
 
-            this.response = ErrorCode.OK
-            this.response.message = this.code
-
-        await this.respond()
+                this.response = ErrorCode.OK
+                this.response.message = this.code
 
 
 class TimezoneFromUUIDRequest(UUIDRequest):
     def __init__(this, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.MINECRAFT_UUID)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -289,13 +263,10 @@ class TimezoneFromUUIDRequest(UUIDRequest):
             timezone = await Helpers.tzBot.db.getTimezoneByUUID(this.uuid)
             if not timezone:
                 this.response = ErrorCode.NOT_FOUND
-                await this.respond()
-                return
 
-            this.response = ErrorCode.OK
-            this.response.message = timezone
-
-        await this.respond()
+            else:
+                this.response = ErrorCode.OK
+                this.response.message = timezone
 
 
 class ImageRequest(APIRequest):
@@ -306,41 +277,19 @@ class ImageRequest(APIRequest):
             this.g: str = data.get("g", "0")
             this.b: str = data.get("b", "0")
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
-
-        if not Path("BMPGen").is_file():
+        if not this.response:
             this.response = ErrorCode.INTERNAL_SERVER_ERROR
-            this.response.message = "Unsupported feature"
-            await this.respond()
-            return
-
-        try:
-            subprocess.run(["./BMPGen", "-r", f"{this.r}", "-g", f"{this.g}", "-b", f"{this.b}"], check=True)  # noqa
-        except subprocess.CalledProcessError:
-            this.response = ErrorCode.BAD_REQUEST
-            this.response.message = "There is a problem with your expression"
-            await this.respond()
-            return
-
-        subprocess.run(  # noqa
-            ["/usr/bin/magick", "output.bmp", "-define", "png:compression-level=9", "-define", "png:compression-strategy=1", "output.png"],
-            check=False,
-        )
-
-        async with aiofiles.open("output.png", "rb") as f:
-            this.response = ErrorCode.OK
-            this.response.message = base64.b64encode(await f.read()).decode()
-            Path.unlink(Path("output.bmp"), missing_ok=True)
-            Path.unlink(Path("output.png"), missing_ok=True)
-
-        await this.respond()
+            this.response.message = "Not implemented."
 
 
 class IsLinkedRequest(UUIDRequest):
     def __init__(self, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.MINECRAFT_UUID)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -350,13 +299,12 @@ class IsLinkedRequest(UUIDRequest):
             else:
                 this.response = ErrorCode.NOT_FOUND
 
-        await this.respond()
-
 
 class UserIDFromUUIDRequest(UUIDRequest):
     def __init__(self, client: Client, headers: dict, data: dict) -> None:
         super().__init__(client, headers, data, ApiPermissions.MINECRAFT_UUID, ApiPermissions.DISCORD_ID)
 
+    @autoRespond
     async def process(this) -> None:
         await super().process()
 
@@ -366,5 +314,3 @@ class UserIDFromUUIDRequest(UUIDRequest):
             else:
                 this.response = ErrorCode.OK
                 this.response.message = userId
-
-        await this.respond()

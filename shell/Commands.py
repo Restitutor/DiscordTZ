@@ -4,12 +4,16 @@ import stat
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
+import tzlocal
 from discord import ExtensionAlreadyLoaded, ExtensionFailed, ExtensionNotFound, ExtensionNotLoaded, NoEntryPointError
 
 from modules.TZBot import TZBot  # noqa: TC001
-from shared import Helpers
+from shared import Graphs
+from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
@@ -22,13 +26,17 @@ class CommandResult:
 
 
 class Command(ABC):
+    name: str
+    description: str
+    aliases: list[str]
+
     def __init__(this, name: str, description: str = "", aliases: list[str] | None = None) -> None:
         this.name = name
         this.description = description
         this.aliases = aliases or []
 
     @abstractmethod
-    def execute(this, args: list[str], ctx: "CommandContext") -> CommandResult:
+    async def execute(this, args: list[str], ctx: "CommandContext") -> CommandResult:
         pass
 
     def validateArgs(this, args: list[str]) -> bool:  # noqa: ARG002
@@ -39,15 +47,18 @@ class Command(ABC):
 
 
 class CommandContext:
-    def __init__(this, shellInstance) -> None:  # noqa: ANN001
-        this.shell = shellInstance
+    shell: "Shell"
+    variables: dict[Any, Any]
+
+    def __init__(this, shell: "Shell") -> None:
+        this.shell = shell
         this.variables = {}
 
     def log(this, message: str) -> None:
-        this.shell.log(message)
+        Logger.log(message)
 
     def error(this, message: str) -> None:
-        this.shell.log("[ERROR] " + message)
+        Logger.error(message)
 
 
 # Built-in commands
@@ -55,7 +66,7 @@ class ExitCommand(Command):
     def __init__(this) -> None:
         super().__init__("exit", "Exit the shell with optional exit code", ["quit", "q"])
 
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         code = 0
         if args:
             if args[0].isdigit() or args[0].lstrip("-").isdigit():
@@ -70,7 +81,7 @@ class EchoCommand(Command):
     def __init__(this) -> None:
         super().__init__("echo", "Display a line of text")
 
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:
         message = " ".join(args) if args else ""
         ctx.log(message)
         return CommandResult(True)
@@ -80,7 +91,7 @@ class RestartCommand(Command):
     def __init__(this) -> None:
         super().__init__("restart", "Restart the shell")
 
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         ctx.log("Restarting the shell...")
         execPath = Path(sys.argv[0])
 
@@ -92,7 +103,7 @@ class RestartCommand(Command):
                 oldPerms = stat.S_IMODE(oldMode)
                 newPerms = oldPerms | 0o111  # Add execute permissions
                 execPath.chmod(newPerms)
-                os.execv(sys.argv[0], sys.argv)
+                os.execlp(sys.executable, sys.executable, *sys.argv)
             except (OSError, PermissionError) as execError:
                 return CommandResult(False, f"Failed to restart: {execError}")
 
@@ -100,11 +111,12 @@ class RestartCommand(Command):
 
 
 class HelpCommand(Command):
+    registry: "CommandRegistry"
     def __init__(this, registry: "CommandRegistry") -> None:
         super().__init__("help", "Show help for commands", ["h", "?"])
         this.registry = registry
 
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:
         if args and args[0]:
             commandName = args[0]
             command = this.registry.getCommand(commandName)
@@ -123,6 +135,9 @@ class HelpCommand(Command):
 
 
 class CommandRegistry:
+    commands: dict[str, Command]
+    aliases: dict[str, str]
+
     def __init__(this) -> None:
         this.commands: dict[str, Command] = {}
         this.aliases: dict[str, str] = {}
@@ -174,7 +189,7 @@ class CommandRegistry:
         names.extend(this.aliases.keys())
         return sorted(names)
 
-    def executeCommand(this, commandLine: str, context: CommandContext) -> CommandResult:
+    async def executeCommand(this, commandLine: str, context: CommandContext) -> CommandResult:
         if not commandLine.strip():
             return CommandResult(True)
 
@@ -190,12 +205,12 @@ class CommandRegistry:
             return CommandResult(False, f"Invalid arguments for {commandName}")
 
         try:
-            return command.execute(args, context)
+            return await command.execute(args, context)
         except Exception as e:  # noqa: BLE001
             return CommandResult(False, f"Command execution failed: {e}")
 
 
-def createCommandSystem(shellInstance=None) -> tuple[CommandRegistry, CommandContext]:  # noqa: ANN001
+def createCommandSystem(shellInstance: "Shell" = None) -> tuple[CommandRegistry, CommandContext]:
     registry = CommandRegistry()
     context = CommandContext(shellInstance)
 
@@ -210,7 +225,7 @@ class Reload(Command):
     def __init__(this) -> None:
         super().__init__("reload", "Reloads a Discord bot module")
 
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         client: TZBot = Helpers.tzBot
 
         for arg in args:
@@ -236,11 +251,11 @@ class Load(Command):
     def __init__(this) -> None:
         super().__init__("load", "Loads a Discord bot module")
 
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         client: TZBot = Helpers.tzBot
 
         try:
-            client.loadModules(args)
+            await client.loadModules(args)
         except (ExtensionNotFound, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionFailed) as e:
             Logger.error(e)
 
@@ -260,11 +275,11 @@ class Unload(Command):
     def __init__(this) -> None:
         super().__init__("unload", "Unloads a Discord bot module")
 
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         client: TZBot = Helpers.tzBot
 
         try:
-            client.unloadModules(args)
+            await client.unloadModules(args)
         except (ExtensionNotFound, ExtensionNotLoaded) as e:
             Logger.error(e)
 
@@ -283,7 +298,7 @@ class ModList(Command):
     def __init__(this) -> None:
         super().__init__("lsmod", "Lists all modules and their status", aliases=["ml", "ls"])
 
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         client: TZBot = Helpers.tzBot
         ctx.log("Module Status:")
         for module in client.getAvailableModules():
@@ -299,7 +314,7 @@ class ForceSync(Command):
     def __init__(this) -> None:
         super().__init__("sync", "Force syncs to WSS")
 
-    def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         client: TZBot = Helpers.tzBot
 
         asyncio.create_task(client.sync_commands(force=True))
@@ -309,3 +324,40 @@ class ForceSync(Command):
 
     def validateArgs(this, args: list[str]) -> bool:
         return len(args) == 0
+
+class ForceSaveStats(Command):
+    def __init__(this) -> None:
+        super().__init__("savestats", "Force saves current statistics")
+
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
+        client: TZBot = Helpers.tzBot
+
+        asyncio.create_task(client.statsDb.dumpCurrent())
+        Logger.log("Saving was successful!")
+
+        return CommandResult(True)
+
+    def validateArgs(this, args: list[str]) -> bool:
+        return len(args) == 0
+
+class Graph(Command):
+    def __init__(this) -> None:
+        super().__init__("graph", "Creates a graph from telemetry")
+
+    async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:
+        graphType = args[0] if len(args) >= 1 else "packetFailSuccessGraph"
+        startTimestamp = datetime.fromtimestamp(int(args[1]), tzlocal.get_localzone()) if len(args) >= 2 and args[1].isnumeric() else None
+        endTimestamp = datetime.fromtimestamp(int(args[2]), tzlocal.get_localzone()) if len(args) >= 3 and args[2].isnumeric() else None
+
+        try:
+            func = getattr(Graphs, graphType)
+        except AttributeError:
+            return CommandResult(False, f"Unknown graph type: {graphType}")
+
+        await func(startTimestamp, endTimestamp)
+        Logger.success("Graph created!")
+
+        return CommandResult(True)
+
+    def validateArgs(this, args: list[str]) -> bool:
+        return len(args) <= 3

@@ -35,7 +35,7 @@ class DecisionActionRow(discord.ui.View):
             Logger.error(f"{ctx.user.name} tried to reject a request!")
             return
 
-        dbKeyForm = this.client.apiDb.getRequestByMsgId(ctx.message.id)
+        dbKeyForm = await this.client.apiDb.getRequestByMsgId(ctx.message.id)
         key = ApiKey.fromDbForm(dbKeyForm)
         keyOwner: discord.User = await ctx.client.fetch_user(key.owner)
 
@@ -80,7 +80,7 @@ class DecisionActionRow(discord.ui.View):
             Logger.error(f"{ctx.user.name} tried to reject a request!")
             return
 
-        dbKeyForm = this.client.apiDb.getRequestByMsgId(ctx.message.id)
+        dbKeyForm = await this.client.apiDb.getRequestByMsgId(ctx.message.id)
         key = ApiKey.fromDbForm(dbKeyForm)
         keyOwner: discord.User = await ctx.client.fetch_user(key.owner)
 
@@ -99,7 +99,7 @@ class DecisionActionRow(discord.ui.View):
             )
             embed.add_field(name="**Reason**", value=f"```{explanation.explanation}```")
             await keyOwner.send(keyOwner.mention, embed=embed)
-            this.client.apiDb.flushRequest(dbKeyForm)
+            await this.client.apiDb.flushRequest(dbKeyForm)
 
             acceptBtn.disabled = True
             rejectBtn.disabled = True

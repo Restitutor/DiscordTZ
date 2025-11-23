@@ -1,20 +1,23 @@
 import asyncio
+from pathlib import Path
 
 import aiomysql
 import aiosqlite
+from typing_extensions import Final
 
 from config.Config import MariaDBConfig
 
 
 class Database:
-    def __init__(this, filename: str, mdbConfig: MariaDBConfig) -> None:
-        this.filename = filename
+    DB_FILENAME: Final[Path] = Path("dbFiles/timezones.sqlite")
+
+    def __init__(this, mdbConfig: MariaDBConfig) -> None:
         this.mdbConfig = mdbConfig
 
         asyncio.create_task(this._postInit())
 
     async def _postInit(this) -> None:
-        this.conn = await aiosqlite.connect(this.filename)
+        this.conn = await aiosqlite.connect(this.DB_FILENAME)
 
         this.mdbPool = await aiomysql.create_pool(
             loop=asyncio.get_event_loop(),

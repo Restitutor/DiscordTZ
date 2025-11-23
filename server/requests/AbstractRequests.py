@@ -1,3 +1,4 @@
+import inspect
 import json
 import random
 
@@ -11,9 +12,18 @@ from server.protocol.Client import Client
 from server.protocol.Response import Response
 from server.protocol.TCP import TCPClient
 from server.ServerError import ErrorCode
-from shared import Helpers
+from shared.Helpers import Helpers
 from shell.Logger import Logger
 
+def autoRespond(func):
+    async def wrapper(this, *args, **kwargs):
+        if not inspect.iscoroutinefunction(func):
+            raise RuntimeError("Annotated function isn't async!")
+
+        result = await func(this)
+        await this.respond()
+        return result
+    return wrapper
 
 class SimpleRequest:
     client: Client
@@ -39,8 +49,9 @@ class SimpleRequest:
         if this.__class__.__name__ == "SimpleRequest":
             this.client.encrypt = False
 
+    @autoRespond
     async def process(this) -> None:
-        await this.respond()
+        pass
 
     async def respond(this) -> None:
         if this.__class__.__name__ == "SimpleRequest":
@@ -126,7 +137,7 @@ class UUIDRequest(APIRequest):
     async def process(this) -> None:
         if (not this.response and this.uuid is None) or not await Helpers.isUUID(this.uuid):
             this.response = ErrorCode.BAD_REQUEST
-            this.response[1] = "Invalid UUID"
+            this.response.message = "Invalid UUID"
 
 
 async def chinaResponse(request: SimpleRequest) -> None:

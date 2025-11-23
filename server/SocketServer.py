@@ -3,28 +3,33 @@ import contextlib
 
 from config.Config import ServerConfig
 from database.DataDatabase import Database
+from server.ServerCrypto import AESDecrypt
 from server.auth.AesKeys import getAesKeyByIp
-from server.EventHandler import EventHandler
 from server.protocol.Client import Client
 from server.protocol.TCP import TCPClient
 from server.protocol.UDP import UDPProtocol
-from server.requests.Requests import SimpleRequest
 from server.requests.RequestTypes import RequestType
-from server.ServerCrypto import AESDecrypt
-from shared.Helpers import parseJson
+from server.requests.Requests import SimpleRequest
+from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
 class SocketServer:
     serverConfig: ServerConfig
+    tcpClients: set[TCPClient]
+    protocol: UDPProtocol
+    transport: asyncio.DatagramTransport
     db: Database
-    eventHandler: EventHandler = EventHandler()
 
-    def __init__(this, serverConfig: ServerConfig) -> None:
-        this.serverConfig = serverConfig
-        this.tcpClients: list[TCPClient] = []
+    def __init__(this) -> None:
+        this.serverConfig = Helpers.tzBot.config.server
+        this.tcpClients = set()
 
     async def start(this) -> None:
+        """
+        Main entrypoint used for starting the server.
+        :return:
+        """
         tcpServer = await asyncio.start_server(this.TCPInit, "0.0.0.0", int(this.serverConfig.port))
         loop = asyncio.get_running_loop()
         transport, protocol = await loop.create_datagram_endpoint(lambda: UDPProtocol(this), local_addr=("0.0.0.0", int(this.serverConfig.port)))
@@ -51,23 +56,26 @@ class SocketServer:
                 return
 
         client: TCPClient = TCPClient(reader, writer, getAesKeyByIp(writer.get_extra_info("peername")))
-        this.tcpClients.append(client)
+        this.tcpClients.add(client)
         asyncio.create_task(this.makeObject(msg, client))
 
     async def makeObject(this, msg: bytes, client: Client) -> None:
-        jsonRequest: dict | None = await parseJson(msg.decode("utf-8", errors="ignore"))
+        await Helpers.tzBot.statsDb.addReceivedDataBandwidth(len(msg))
+        jsonRequest: dict | None = await Helpers.parseJson(msg.decode("utf-8", errors="ignore"))
 
         if isinstance(client, TCPClient):
             protocol: str = "TCP"
         else:
             protocol: str = "UDP"
 
+        await Helpers.tzBot.statsDb.addProtocol(protocol)
+
         if jsonRequest is not None:
             Logger.log(f"Got an unencrypted {protocol} request: {jsonRequest}")
 
         else:
             decrypted = AESDecrypt(msg, client.aesKey)
-            jsonRequest = await parseJson(decrypted)
+            jsonRequest = await Helpers.parseJson(decrypted)
 
             if not jsonRequest:
                 Logger.log(f"Got an invalid {protocol} request: {msg}")
@@ -82,7 +90,7 @@ class SocketServer:
             Logger.log(f"Got an encrypted {protocol} request: {jsonRequest}")
             client.encrypt = True
 
-        payload: dict | None = jsonRequest.get("data", {})
+        payload: dict = jsonRequest.get("data", {})
         requestType: str | None = jsonRequest.get("requestType")
 
         if requestType:
@@ -99,6 +107,7 @@ class SocketServer:
                 return
 
             try:
+                await Helpers.tzBot.statsDb.addEstablishedKnownRequestType(requestType)
                 request = reqType(client, jsonRequest, payload)
                 await request.process()
 

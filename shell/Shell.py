@@ -1,3 +1,4 @@
+import asyncio
 import sys
 
 from prompt_toolkit import Application
@@ -8,11 +9,24 @@ from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.layout import HSplit, Layout
 from prompt_toolkit.widgets import TextArea
 
-from shell.Commands import ForceSync, Load, ModList, Reload, Unload, createCommandSystem
+from shell.Commands import ForceSync, Load, ModList, Reload, Unload, createCommandSystem, ForceSaveStats, Graph, \
+    CommandRegistry, CommandContext
 from shell.Logger import Logger
 
 
 class Shell(Application):
+    commandRegistry: CommandRegistry
+    commandContext: CommandContext
+    commandList: list[str]
+
+    logLines: list[str]
+    autoscroll: bool
+
+    logWindow: TextArea
+    inputField: TextArea
+    layout: Layout
+    keyBindings: KeyBindings
+
     def __init__(this) -> None:
         Logger.setLogFunction(this.log)
 
@@ -24,6 +38,8 @@ class Shell(Application):
         this.commandRegistry.register(Unload())
         this.commandRegistry.register(ModList())
         this.commandRegistry.register(ForceSync())
+        this.commandRegistry.register(ForceSaveStats())
+        this.commandRegistry.register(Graph())
 
         this.logLines: list[str] = []
         this.autoScroll = True
@@ -35,7 +51,7 @@ class Shell(Application):
             multiline=False,
             read_only=False,
             focusable=True,
-            accept_handler=this.cmdAcceptHandler,
+            accept_handler=this.acceptor,
             completer=WordCompleter(this.commandList, ignore_case=True),
             history=FileHistory(".tzhistory"),
         )
@@ -100,16 +116,18 @@ class Shell(Application):
             window.vertical_scroll = maxScroll
             this.invalidate()
 
-    def cmdAcceptHandler(this, buffer: Buffer | str) -> bool:
+    def acceptor(this, buffer: Buffer | str) -> bool:
         text = buffer.text.strip() if isinstance(buffer, Buffer) else buffer
-
         buffer.history.append_string(text)
-        result = this.commandRegistry.executeCommand(text, this.commandContext)
+
+        asyncio.create_task(this.cmdAcceptHandler(text))
+        buffer.reset()
+        return False
+
+    async def cmdAcceptHandler(this, text: str) -> None:
+        result = await this.commandRegistry.executeCommand(text, this.commandContext)
         if not result.success and result.message:
-            this.log(result.message)
+            Logger.error(result.message)
 
         if result.shouldExit:
             sys.exit(result.exitCode)
-
-        buffer.reset()
-        return False

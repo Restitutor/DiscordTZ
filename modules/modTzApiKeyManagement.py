@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+from database.stats.StatsDatabase import collectCommandStats
 from modules.TZBot import TZBot
 from modules.ui.DecisionActionRow import DecisionActionRow
 from modules.ui.TzApiRequestUI import TzApiRequestUI
@@ -13,7 +14,8 @@ class TzApiKeyManagement(commands.Cog):
         this.client = client
 
     @apiGroup.command(name="requestkey", description="Request a Timezone API key")
-    async def request(this, ctx: discord.ApplicationContext) -> None:
+    @collectCommandStats
+    async def request(this, ctx: discord.ApplicationContext) -> bool:
         view = TzApiRequestUI(this.client, ctx.user.id)
         await this.client.addOwner(ctx.user.id)
 
@@ -31,9 +33,8 @@ class TzApiKeyManagement(commands.Cog):
             By clicking "Submit!", I agree to these Terms of Service.',
         )
 
-        await ctx.response.send_message(
-            "We need some details about your app and its usage to approve it. Fill the options below.", view=view, embed=embed
-        )
+        await ctx.response.send_message("We need some details about your app and its usage to approve it. Fill the options below.", view=view, embed=embed)
+        return True
 
 
 def setup(client: TZBot) -> None:

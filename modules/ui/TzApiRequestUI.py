@@ -78,7 +78,7 @@ class TzApiRequestUI(discord.ui.View):
         ],
         custom_id="PERMSELECT",
     )
-    async def permsSelect(this, selection: discord.ui.Select[list[str]], ctx: discord.Interaction) -> None:
+    async def permsSelect(this, selection: discord.ui.Select, ctx: discord.Interaction) -> None:
         if ctx.user.id != this.dialogOwner:
             await ctx.response.send_message("You can't do that!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to mess with {ctx.guild.get_member(this.dialogOwner).display_name}'s dialog!")
@@ -98,7 +98,7 @@ class TzApiRequestUI(discord.ui.View):
         ],
         custom_id="DURATIONSELECT",
     )
-    async def durationSelect(this, selection: discord.ui.Select[str], ctx: discord.Interaction) -> None:
+    async def durationSelect(this, selection: discord.ui.Select, ctx: discord.Interaction) -> None:
         if ctx.user.id != this.dialogOwner:
             await ctx.response.send_message("You can't do that!", ephemeral=True)
             Logger.error(f"{ctx.user.name} tried to mess with {ctx.guild.get_member(this.dialogOwner).display_name}'s dialog!")
@@ -155,4 +155,4 @@ class TzApiRequestUI(discord.ui.View):
 
         msg: discord.Message = await apiChannel.send(embed=embed, view=DecisionActionRow(this.client))
 
-        this.client.apiDb.addToPending(dbForm, msg.id)
+        await this.client.apiDb.addToPending(dbForm, msg.id)

@@ -11,7 +11,7 @@ class ApiKeyDatabase:
         asyncio.create_task(this._postInit())
 
     async def _postInit(this) -> None:
-        this.conn = await aiosqlite.connect("apiKeys.db")
+        this.conn = await aiosqlite.connect("dbFiles/apiKeys.db")
         await this.conn.execute(
             """CREATE TABLE IF NOT EXISTS pendingApiKeys
                (
