@@ -59,7 +59,7 @@ class DecisionActionRow(discord.ui.View):
 
             await keyOwner.send(keyOwner.mention, embed=embed)
 
-            this.client.apiDb.moveToReal(dbKeyForm)
+            await this.client.apiDb.moveToReal(dbKeyForm)
             acceptBtn.disabled = True
             rejectBtn.disabled = True
             thisEmbed = ctx.message.embeds[0]

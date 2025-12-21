@@ -55,12 +55,9 @@ class TzApiRequestUI(discord.ui.View):
     @discord.ui.select(
         placeholder="Select permissions you want to use",
         min_values=1,
-        max_values=7,
+        max_values=4,
         options=[
             discord.SelectOption(label="Discord ID", description="You may use Discord ID to query/get.", value="DISCORD_ID", emoji="🔵"),
-            discord.SelectOption(
-                label="Timezone Bot Alias", description="You may use the Timezone Bot Alias to query/get.", value="TZBOT_ALIAS", emoji="🕰️"
-            ),
             discord.SelectOption(
                 label="Minecraft UUID", description="You may use linked Minecraft UUIDs to query/get.", value="MINECRAFT_UUID", emoji="🟩"
             ),
@@ -68,13 +65,6 @@ class TzApiRequestUI(discord.ui.View):
                 label="Edit Minecraft UUIDs", description="You may edit the linked Minecraft UUIDs database.", value="UUID_POST", emoji="🖋️"
             ),
             discord.SelectOption(label="IP Address", description="You may use IP addresses to do timezone queries", value="IP_ADDRESS", emoji="📡"),
-            discord.SelectOption(
-                label="Timezone Overrides", description="You may get the timezone overrides from the API.", value="TZ_OVERRIDES_GET", emoji="📜"
-            ),
-            discord.SelectOption(
-                label="Edit Timezone Overrides", description="You may edit the timezone overrides database.", value="TZ_OVERRIDES_POST", emoji="✏️"
-            ),
-            # discord.SelectOption(label="Image Creation API", description="You may generate images using math.", value="IMAGE_API", emoji="🖼️"),
         ],
         custom_id="PERMSELECT",
     )

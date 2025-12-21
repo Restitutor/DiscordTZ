@@ -25,9 +25,6 @@ class ServerLogging(commands.Cog):
         SimpleRequest.commonEventHandler.onError(this.onError)
 
     async def createBasicEmbed(this, request: SimpleRequest, template: discord.Embed) -> tuple[discord.Embed, list[discord.File]] | tuple[None, None]:
-        if request.__class__.__name__ in {"PingRequest", "HelloRequest", "KeyRenewRequest"}:
-            return None, None
-
         country = await Helpers.getCountryOrHost(request)
 
         await Helpers.tzBot.statsDb.addSentDataBandwidth(len(json.dumps(request.response.__dict__).encode('utf-8')))
@@ -66,7 +63,7 @@ class ServerLogging(commands.Cog):
         return template, fileSendList
 
     async def onError(this, request: SimpleRequest) -> None:
-        lock = "🔒" if request.client.encrypt else ""
+        lock = "🔒" if request.client.aesKey else ""
         embed: discord.Embed = discord.Embed(title=f"{lock} **Error** {lock}".strip(), color=discord.Color.red())
         embed, fileSendList = await this.createBasicEmbed(request, embed)
 
@@ -81,10 +78,13 @@ class ServerLogging(commands.Cog):
         await this.client.errorChannel.send("", embed=embed)
 
     async def onSuccess(this, request: SimpleRequest) -> None:
+        if request.__class__.__name__ in {"PingRequest"}:
+            return
+
         if isinstance(request, UserIdUUIDLinkPost):
             request.response.message = "<redacted>"
 
-        lock = "🔒" if request.client.encrypt else ""
+        lock = "🔒" if request.client.aesKey else ""
         embed: discord.Embed = discord.Embed(title=f"{lock} **Success** {lock}".strip(), color=discord.Color.green())
         embed, fileSendList = await this.createBasicEmbed(request, embed)
 

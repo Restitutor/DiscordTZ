@@ -4,7 +4,7 @@ import asyncio
 import discord
 
 from modules.TZBot import TZBot
-from server.SocketServer import SocketServer
+from server.APIServer import APIServer
 from shell.Logger import Logger
 from shell.Shell import Shell
 
@@ -13,9 +13,8 @@ async def main() -> None:
     shellTask = asyncio.create_task(Shell().run_async())
     client = TZBot(command_prefix="tz!", help_command=None, intents=discord.Intents.all())
     botTask = asyncio.create_task(client.startRunning())
-    serverStarter = asyncio.create_task(SocketServer().start())
 
-    tasks = [serverStarter, shellTask, botTask]
+    tasks = [shellTask, botTask]
     try:
         await asyncio.gather(*tasks)
     except Exception as e:  # noqa: BLE001

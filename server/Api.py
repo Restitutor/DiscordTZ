@@ -10,14 +10,14 @@ from shared.Helpers import Helpers
 
 class ApiPermissions(IntFlag):
     DISCORD_ID = 1 << 0
-    TZBOT_ALIAS = 1 << 1
+  # TZBOT_ALIAS = 1 << 1
     MINECRAFT_UUID = 1 << 2
     UUID_POST = 1 << 3
     IP_ADDRESS = 1 << 4
-    TZ_OVERRIDES_GET = 1 << 5
-    TZ_OVERRIDES_POST = 1 << 6
-    COMMAND_API = 1 << 7
-    IMAGE_API = 1 << 8
+  # TZ_OVERRIDES_GET = 1 << 5
+  # TZ_OVERRIDES_POST = 1 << 6
+  # COMMAND_API = 1 << 7
+  # IMAGE_API = 1 << 8
 
 
 class ApiKey:

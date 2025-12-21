@@ -28,6 +28,8 @@ def cleanupAfter(*attrs: Path | str):
     return decorator
 
 class Helpers:
+    BLACKLISTED_COUNTRIES: set[str] = {"SG", "CN", "MO", "HK", "TW"}
+
     HOSTS_FILE: Final[Path] = Path("/etc/hosts")
     HOSTNAME_FILE: Final[Path] = Path("/etc/hostname")
     BMPGEN_EXEC_FILE: Final[Path] = Path("./execs/BMPGen")

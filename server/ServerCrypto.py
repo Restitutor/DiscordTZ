@@ -1,7 +1,6 @@
 import os
 
-from Crypto.Cipher import AES, PKCS1_OAEP
-from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
 
@@ -25,15 +24,3 @@ def AESEncrypt(message: bytes, key: bytes) -> bytes:
     paddedMessage = pad(message, AES.block_size)
     encryptedMessage = cipher.encrypt(paddedMessage)
     return iv + encryptedMessage
-
-
-def RSAEncrypt(message: bytes, key: RSA.RsaKey) -> bytes:
-    cipher: PKCS1_OAEP.PKCS1OAEP_Cipher = PKCS1_OAEP.new(key)
-
-    return cipher.encrypt(message)
-
-
-def RSADecrypt(message: bytes, key: RSA.RsaKey) -> bytes:
-    cipher: PKCS1_OAEP.PKCS1OAEP_Cipher = PKCS1_OAEP.new(key)
-
-    return cipher.decrypt(message)

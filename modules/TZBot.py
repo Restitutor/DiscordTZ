@@ -27,6 +27,8 @@ from database.APIKeyDatabase import ApiKeyDatabase
 from database.DataDatabase import Database
 from database.stats.StatsDatabase import StatsDatabase
 from modules.helplib.Command import Command
+from server.APIServer import APIServer
+from server.ServerLogger import ServerLogger
 from shared.Helpers import Helpers
 from shell.Logger import Logger
 
@@ -38,6 +40,10 @@ class TZBot(bridge.Bot):
     CONFIG_FILE: Final[Path] = Path("config.json")
     DIALOG_OWNERS_FILE: Final[Path] = Path("state/dialogOwners.json")
     MODULES_DIR: Final[Path] = Path("modules/")
+
+    API_SERVER: Final[APIServer]
+    API_SERVER_TASK: Final[asyncio.Task]
+    API_PACKET_LOGGER: Final[ServerLogger]
 
     GEO_IP_DB_FILE: Final[Path] = Path("state/GeoLite2-City.mmdb")
     GEO_IP_URL: Final[str] = "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz"
@@ -83,6 +89,9 @@ class TZBot(bridge.Bot):
                 this.dialogOwners: set[int] = set(json.loads(f.read()))
         except json.JSONDecodeError:
             this.dialogOwners: set[int] = set()
+
+        this.API_PACKET_LOGGER = ServerLogger(this, True)
+        this.API_SERVER = APIServer(this)
 
     # Command Response
     async def getSuccess(this, *, description: str | None = None, user: discord.User | None = None) -> discord.Embed:
@@ -178,6 +187,7 @@ class TZBot(bridge.Bot):
         await this.syncGeoIP()
         await this.loadCogs()
         await this.sync_commands()
+        this.API_SERVER_TASK = asyncio.create_task(this.API_SERVER.start())
 
     async def on_application_command_error(this, ctx: discord.Interaction, error: discord.DiscordException) -> bool:
         embed = await this.getFail(description="There was an error with the command's execution.", user=ctx.user)

@@ -47,56 +47,16 @@ class Database:
         return str(val[0])
 
     async def setTimezone(this, userId: int, timezone: str, alias: str) -> bool:
-        query: str = "INSERT INTO timezones (user, timezone, alias) VALUES (?, ?, ?)\
+        query: str = "INSERT INTO timezones (user, timezone) VALUES (?, ?)\
                  ON CONFLICT DO UPDATE SET timezone = ?, alias = ?;"
-        mdbQuery: str = "INSERT INTO timezones (user, timezone, alias) VALUES (%s, %s, %s)\
+        mdbQuery: str = "INSERT INTO timezones (user, timezone) VALUES (%s, %s)\
                  ON DUPLICATE KEY UPDATE timezone = %s, alias = %s;"
 
         return await this.executeSetQuery(query, mdbQuery, (userId, timezone.replace(" ", "_"), alias, timezone.replace(" ", "_"), alias))
 
-    async def setAlias(this, userId: int, alias: str) -> bool:
-        query: str = "UPDATE timezones SET alias = ? WHERE user = ?;"
-        return await this.executeSetQuery(query, query.replace("?", "%s"), (alias, userId))
-
     async def getTimeZone(this, userId: int) -> str | None:
         query: str = "SELECT timezone from timezones WHERE user = ?"
         return await this.executeGetStrQuery(query, (userId,))
-
-    async def getAlias(this, userId: int) -> str | None:
-        query: str = "SELECT alias from timezones WHERE user = ?"
-        return await this.executeGetStrQuery(query, (userId,))
-
-    async def getUserByAlias(this, alias: str) -> str | None:
-        query: str = "SELECT user from timezones WHERE alias = ?"
-        return await this.executeGetStrQuery(query, (alias,))
-
-    async def getTimeZoneByAlias(this, alias: str) -> str | None:
-        query: str = "SELECT timezone from timezones WHERE alias = ?"
-        return await this.executeGetStrQuery(query, (alias,))
-
-    async def addTzOverride(this, uuid: str, timezone: str) -> bool:
-        query: str = "INSERT into tz_overrides (uuid, timezone) VALUES (?, ?) ON CONFLICT DO UPDATE SET timezone = ?"
-        mdbQuery: str = "INSERT into tz_overrides (uuid, timezone) VALUES (%s, %s) ON DUPLICATE KEY UPDATE timezone = ?"
-
-        return await this.executeSetQuery(query, mdbQuery, (uuid, timezone.replace(" ", "_"), timezone.replace(" ", "_")))
-
-    async def getTzOverrides(this) -> dict[str, str] | None:
-        query: str = "SELECT uuid, timezone from tz_overrides"
-
-        cursor = await this.conn.execute(query)
-        await this.conn.commit()
-        if not (val := await cursor.fetchall()):
-            return None
-
-        return {value[0]: value[1] for value in val}
-
-    async def getTzOverrideByUUID(this, uuid: str) -> str | None:
-        query: str = "SELECT timezone from tz_overrides WHERE uuid = ?"
-        return await this.executeGetStrQuery(query, (uuid,))
-
-    async def removeTzOverride(this, uuid: str) -> bool:
-        query: str = "DELETE FROM tz_overrides WHERE uuid = ?"
-        return await this.executeSetQuery(query, query.replace("?", "%s"), (uuid,))
 
     async def assignUUIDToUserId(this, uuid: str, userId: int, timezone: str) -> bool:
         query: str = "INSERT INTO timezones (user, uuid, timezone, alias) VALUES (?, ?, ?, ?) ON CONFLICT(user) DO UPDATE SET uuid = ?;"

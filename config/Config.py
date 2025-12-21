@@ -35,6 +35,7 @@ class MariaDBConfig:
 @dataclass
 class ServerConfig:
     port: int
+    aesKey: str
     apiKeysKey: str
     apiApproveChannelId: int
     devlogRoleId: int

@@ -8,12 +8,13 @@ from geoip2.models import City
 
 from server.Api import ApiKey, ApiPermissions
 from server.EventHandler import EventHandler
+from server.ServerError import ErrorCode
 from server.protocol.Client import Client
 from server.protocol.Response import Response
 from server.protocol.TCP import TCPClient
-from server.ServerError import ErrorCode
 from shared.Helpers import Helpers
 from shell.Logger import Logger
+
 
 def autoRespond(func):
     async def wrapper(this, *args, **kwargs):
@@ -32,13 +33,15 @@ class SimpleRequest:
     response: Response | None = None
     city: City | None
     protocol: str
+    tzBot: "TZBot"
 
     commonEventHandler: EventHandler = EventHandler()
 
-    def __init__(this, client: Client, headers: dict, data: dict) -> None:
+    def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         this.client = client
         this.data = data
         this.headers = headers
+        this.tzBot = tzBot
 
         this.protocol = "TCP" if isinstance(client, TCPClient) else "UDP"
         try:
@@ -47,7 +50,7 @@ class SimpleRequest:
             this.city = None
 
         if this.__class__.__name__ == "SimpleRequest":
-            this.client.encrypt = False
+            this.client.aesKey = None
 
     @autoRespond
     async def process(this) -> None:
@@ -56,7 +59,7 @@ class SimpleRequest:
     async def respond(this) -> None:
         if this.__class__.__name__ == "SimpleRequest":
             this.response = ErrorCode.BAD_REQUEST
-            this.client.encrypt = False
+            this.client.aesKey = None
 
         await sendResponse(this)
 
@@ -65,28 +68,28 @@ class SimpleRequest:
 
 
 class PartiallyEncryptedRequest(SimpleRequest):
-    def __init__(this, client: Client, headers: dict, data: dict) -> None:
-        super().__init__(client, headers, data)
+    def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
+        super().__init__(client, headers, data, tzBot)
 
     async def process(this) -> None:
-        if not (this.client.encrypt and await Helpers.isLocalSubnet(this.client.ip.address)):
+        if not (this.client.aesKey and await Helpers.isLocalSubnet(this.client.ip.address)):
             this.response = ErrorCode.BAD_REQUEST
             this.response.message = "Bad Request, Unencrypted"
 
 
 class EncryptedRequest(PartiallyEncryptedRequest):
-    def __init__(this, client: Client, headers: dict, data: dict) -> None:
-        super().__init__(client, headers, data)
+    def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
+        super().__init__(client, headers, data, tzBot)
 
     async def process(this) -> None:
-        if not (this.response and this.client.encrypt):
+        if not (this.response and this.client.aesKey):
             this.response = ErrorCode.BAD_REQUEST
             this.response.message = "Bad Request, Unencrypted"
 
 
 class APIRequest(PartiallyEncryptedRequest):
-    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
-        super().__init__(client, headers, data)
+    def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot", *requiredPerms: ApiPermissions) -> None:
+        super().__init__(client, headers, data, tzBot)
         this.requiredPerms = requiredPerms
         this.rawApiKey = this.headers.get("apiKey")
 
@@ -96,7 +99,7 @@ class APIRequest(PartiallyEncryptedRequest):
                 this.response = ErrorCode.FORBIDDEN
                 return
 
-            if not await Helpers.tzBot.apiDb.isValidKey(this.rawApiKey):
+            if not await this.tzBot.apiDb.isValidKey(this.rawApiKey):
                 Logger.error("Key isn't in the DB")
                 this.response = ErrorCode.FORBIDDEN
                 return
@@ -110,28 +113,17 @@ class APIRequest(PartiallyEncryptedRequest):
 
 
 class UserIdRequest(APIRequest):
-    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
-        super().__init__(client, headers, data, *requiredPerms)
+    def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot", *requiredPerms: ApiPermissions) -> None:
+        super().__init__(client, headers, data, tzBot, *requiredPerms)
         this.userId = int(data.get("userId")) if str(data.get("userId")).isnumeric() else None
 
     async def process(this) -> None:
         if not (this.response and this.userId):
             this.response = ErrorCode.BAD_REQUEST
 
-
-class AliasRequest(APIRequest):
-    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
-        super().__init__(client, headers, data, *requiredPerms)
-        this.alias = str(data.get("alias"))
-
-    async def process(this) -> None:
-        if not this.response and this.alias is None:
-            this.response = ErrorCode.BAD_REQUEST
-
-
 class UUIDRequest(APIRequest):
-    def __init__(this, client: Client, headers: dict, data: dict, *requiredPerms: ApiPermissions) -> None:
-        super().__init__(client, headers, data, *requiredPerms)
+    def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot", *requiredPerms: ApiPermissions) -> None:
+        super().__init__(client, headers, data, tzBot, *requiredPerms)
         this.uuid = data.get("uuid")
 
     async def process(this) -> None:
@@ -186,18 +178,15 @@ async def chinaResponse(request: SimpleRequest) -> None:
     ]
 
     request.response = Response(403, random.choice(messages))  # noqa: S311
-    request.client.encrypt = False
+    request.client.aesKey = None
 
 
 async def sendResponse(request: SimpleRequest) -> None:
-    if request.city is not None and request.city.country.iso_code in {"SG", "CN", "MO", "HK"}:
+    if request.city is not None and request.city.country.iso_code in Helpers.BLACKLISTED_COUNTRIES:
         await chinaResponse(request)
         request.commonEventHandler.triggerError(request)
     else:
-        if request.response.code == 200:  # noqa: PLR2004
-            request.commonEventHandler.triggerSuccess(request)
-        else:
-            request.commonEventHandler.triggerError(request)
+        await request.tzBot.API_PACKET_LOGGER.sendLogEmbed(request)
         await request.client.send(json.dumps(request.response.__dict__).encode())
 
-    Logger.log(f"Responding with: {request.response.__dict__}")
+    Logger.log(f"Responding with: {json.dumps(request.response.__dict__)}")
