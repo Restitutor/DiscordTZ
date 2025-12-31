@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Annotated
 
 from dataclasses_json import dataclass_json
 
@@ -34,7 +35,7 @@ class MariaDBConfig:
 @dataclass_json
 @dataclass
 class ServerConfig:
-    port: int
+    port: Annotated[int, "Value must be between 1 and 65535"]
     aesKey: str
     apiKeysKey: str
     apiApproveChannelId: int

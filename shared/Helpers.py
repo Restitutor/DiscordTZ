@@ -1,3 +1,4 @@
+import ipaddress
 import asyncio
 import inspect
 import json
@@ -7,12 +8,14 @@ import string
 from io import BytesIO
 from pathlib import Path
 
+
 from typing_extensions import Final
 
 from shell.Logger import Logger
 
 
-from typing import ParamSpec, TypeVar, Callable, Coroutine, Any
+from typing import ParamSpec, TypeVar, Callable, Coroutine, Any, NewType
+from typing_extensions import TypeIs
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -42,6 +45,9 @@ class Helpers:
 
     OUTPUT_BMP_FILE: Final[Path] = Path("output.bmp")
     OUTPUT_PNG_FILE: Final[Path] = Path("output.png")
+
+    UUIDStr = NewType("UUIDStr", str)
+    IPv4Str = NewType("IPv4Str", str)
 
     tzBot: "TZBot" = None
 
@@ -152,9 +158,16 @@ class Helpers:
         return bool(ipRegex.match(ip))
 
     @staticmethod
-    async def isUUID(uniqueId: str) -> bool:
-        pattern = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
-        return bool(pattern.match(uniqueId))
+    def is_ip(ip: str) -> TypeIs[IPv4Str]:
+        try:
+            ipaddress.ip_address(ip)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def is_uuid(uniqueId: str) -> TypeIs[UUIDStr]:
+        return bool(Helpers.UUID_PATTERN.match(uniqueId))
 
     @staticmethod
     async def generateCharSequence(n: int) -> str:

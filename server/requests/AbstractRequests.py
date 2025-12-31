@@ -132,7 +132,7 @@ class UUIDRequest(APIRequest):
         this.uuid = data.get("uuid")
 
     async def process(this) -> None:
-        if (not this.response and this.uuid is None) or not await Helpers.isUUID(this.uuid):
+        if (not this.response and this.uuid is None) or not Helpers.is_uuid(this.uuid):
             this.response = ErrorCode.BAD_REQUEST
             this.response.message = "Invalid UUID"
 

@@ -31,10 +31,17 @@ from server.APIServer import APIServer
 from server.ServerLogger import ServerLogger
 from shared.Helpers import Helpers
 from shell.Logger import Logger
+from typing import Literal
+
+ModuleName = Literal[
+    "BotProfile", "Chroma", "Help", "Image", 
+    "ModuleManagement", "Quote", "ServerLogging", 
+    "TzApiKeyManagement", "TzControlCommands", "TzLink"
+]
 
 
 class TZBot(bridge.Bot):
-    loadedModules: list[str] = []
+    loadedModules: list[ModuleName] = []
     loadedCommands: list[Command] = []
 
     CONFIG_FILE: Final[Path] = Path("config.json")
@@ -216,13 +223,13 @@ class TZBot(bridge.Bot):
     def getAvailableModules(this) -> list[str]:
         return [file.stem[3:] for file in this.MODULES_DIR.glob("mod*.py")]
 
-    def getLoadedModules(this) -> list[str]:
+    def getLoadedModules(this) -> list[ModuleName]:
         return this.loadedModules
 
     def getUnloadedModules(this) -> list[str]:
         return [module for module in this.getAvailableModules() if module not in this.loadedModules]
 
-    async def unloadModules(this, modules: list[str]) -> None:
+    async def unloadModules(this, modules: list[ModuleName]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
                 raise ExtensionNotLoaded(f"Module {module} is not loaded")
@@ -237,7 +244,7 @@ class TZBot(bridge.Bot):
         await this.refreshCommands()
         Logger.success(f"Module {", ".join(modules)} unloaded!")
 
-    async def loadModules(this, modules: list[str]) -> None:
+    async def loadModules(this, modules: list[ModuleName]) -> None:
         for module in modules:
             if module not in this.getUnloadedModules():
                 raise ExtensionAlreadyLoaded(f"Module {module} is loaded")
@@ -252,7 +259,7 @@ class TZBot(bridge.Bot):
         await this.refreshCommands()
         Logger.success(f"Modules {", ".join(modules)} loaded!")
 
-    async def reloadModules(this, modules: list[str]) -> None:
+    async def reloadModules(this, modules: list[ModuleName]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
                 raise ExtensionNotLoaded(f"Module {module} is not loaded")

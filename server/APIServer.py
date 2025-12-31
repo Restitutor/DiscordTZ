@@ -1,5 +1,6 @@
 import asyncio
-from typing import TypedDict, Any
+from typing import TypedDict, Any, Literal, Union
+import ipaddress
 
 from server.ServerCrypto import AESDecrypt
 from server.protocol.Client import Client
@@ -11,9 +12,44 @@ from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
-class APIPayload(TypedDict, total=False):
-    requestType: str
-    data: dict[str, Any]
+# TODO: These fields need more detail
+class TimezoneRequestData(TypedDict):
+    userId: int
+
+class TimezonePayload(TypedDict):
+    requestType: Literal["TIMEZONE_FROM_USERID"]
+    data: TimezoneRequestData
+
+class IPRequestData(TypedDict):
+    ip: str
+
+class IPPayload(TypedDict):
+    requestType: Literal["TIMEZONE_FROM_IP"]
+    data: IPRequestData
+
+class PingRequestData(TypedDict):
+    pass
+
+class PingPayload(TypedDict):
+    requestType: Literal["PING"]
+    data: PingRequestData
+
+class LinkPostRequestData(TypedDict):
+    uuid: str
+    timezone: str
+
+class LinkPostPayload(TypedDict):
+    requestType: Literal["USER_ID_UUID_LINK_POST"]
+    data: LinkPostRequestData
+
+class UUIDRequestData(TypedDict):
+    uuid: str
+
+class UUIDPayload(TypedDict):
+    requestType: Literal["TIMEZONE_FROM_UUID", "IS_LINKED", "USER_ID_FROM_UUID"]
+    data: UUIDRequestData
+
+APIPayload = Union[TimezonePayload, IPPayload, PingPayload, LinkPostPayload, UUIDPayload]
 
 
 class APIServer:
@@ -86,18 +122,32 @@ class APIServer:
             Logger.log(f"Got an encrypted {protocol} request: {jsonRequest}")
             client.encrypt = True
 
-        payload: dict = jsonRequest.pop("data", {})
-        requestType: str = jsonRequest.get("requestType", "INVALID")
+        if isinstance(jsonRequest, dict) and "requestType" in jsonRequest:
+             reqTypeStr = jsonRequest.get("requestType")
+             payload = jsonRequest.get("data", {})
+             
+             # if elif chain is verbose but more type safe
+             if reqTypeStr == "TIMEZONE_FROM_USERID":
+                 await RequestType.TIMEZONE_FROM_USERID(client, jsonRequest, payload, this.tzBot).process()
+             elif reqTypeStr == "TIMEZONE_FROM_IP":
+                 await RequestType.TIMEZONE_FROM_IP(client, jsonRequest, payload, this.tzBot).process()
+             elif reqTypeStr == "PING":
+                 await RequestType.PING(client, jsonRequest, payload, this.tzBot).process()
+             elif reqTypeStr == "USER_ID_UUID_LINK_POST":
+                 await RequestType.USER_ID_UUID_LINK_POST(client, jsonRequest, payload, this.tzBot).process()
+             elif reqTypeStr == "TIMEZONE_FROM_UUID":
+                 await RequestType.TIMEZONE_FROM_UUID(client, jsonRequest, payload, this.tzBot).process()
+             elif reqTypeStr == "IS_LINKED":
+                 await RequestType.IS_LINKED(client, jsonRequest, payload, this.tzBot).process()
+             elif reqTypeStr == "USER_ID_FROM_UUID":
+                 await RequestType.USER_ID_FROM_UUID(client, jsonRequest, payload, this.tzBot).process()
+             else:
+                 Logger.error(f"Invalid request type: {reqTypeStr}, defaulting to SimpleRequest")
+                 request = SimpleRequest(client, jsonRequest, payload, this.tzBot)
+                 await request.process()
+             
+             await this.tzBot.statsDb.addEstablishedKnownRequestType(str(reqTypeStr))
+             return
 
-        try:
-            reqType: RequestType = getattr(RequestType, requestType)
-        except AttributeError:
-            Logger.error(f"Invalid request type: {requestType}, defaulting to SimpleRequest")
+        # Fallback if structure doesn't match expected dict (should be handled by parseJson returning dict)
 
-            request = SimpleRequest(client, jsonRequest, payload, this.tzBot)
-            await request.process()
-            return
-
-        await this.tzBot.statsDb.addEstablishedKnownRequestType(requestType)
-        request = reqType(client, jsonRequest, payload, this.tzBot)
-        await request.process()

@@ -3,6 +3,7 @@ from discord.ext import commands
 
 from database.stats.StatsDatabase import collectCommandStats
 from modules.TZBot import TZBot
+from shared.Helpers import Helpers
 
 
 class TzLink(commands.Cog):
@@ -18,7 +19,10 @@ class TzLink(commands.Cog):
             return False
 
         testUuid = await this.client.db.getUUIDByUserId(ctx.user.id)
-        testId = await this.client.db.getUserIdByUUID(testUuid)
+        
+        testId = None
+        if testUuid and Helpers.is_uuid(testUuid):
+            testId = await this.client.db.getUserIdByUUID(testUuid)
 
         if testUuid and testId and int(testId) == ctx.user.id:
             embed = await this.client.getFail(description="Your account is already linked!", user=ctx.user)
@@ -36,7 +40,10 @@ class TzLink(commands.Cog):
     @collectCommandStats
     async def unlink(this, ctx: discord.ApplicationContext) -> bool:
         testUuid = await this.client.db.getUUIDByUserId(ctx.user.id)
-        testId = await this.client.db.getUserIdByUUID(testUuid)
+
+        testId = None
+        if testUuid and Helpers.is_uuid(testUuid):
+            testId = await this.client.db.getUserIdByUUID(testUuid)
 
         if not (testUuid and testId) or int(testId) != ctx.user.id:
             embed = await this.client.getFail(description="There's nothing to unlink!", user=ctx.user)
