@@ -1,3 +1,7 @@
+from typing_extensions import Final
+from pathlib import Path
+from io import BytesIO
+import ipaddress
 import asyncio
 import gzip
 import inspect
@@ -6,24 +10,27 @@ import os
 import random
 import re
 import string
-from io import BytesIO
-from pathlib import Path
-
 import msgpack
+
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad, pad
-from typing_extensions import Final
 
 from shell.Logger import Logger
 
 
-def cleanupAfter(*attrs: Path | str):
-    def decorator(func):
+from typing import ParamSpec, TypeVar, Callable, Coroutine, Any, NewType
+from typing_extensions import TypeIs
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def cleanupAfter(*attrs: Path | str) -> Callable[[Callable[P, Coroutine[Any, Any, R]]], Callable[P, Coroutine[Any, Any, R]]]:
+    def decorator(func: Callable[P, Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
         if not inspect.iscoroutinefunction(func):
             raise RuntimeError(f"{func.__name__} is not callable!")
 
-        async def wrapper(*args, **kwargs):
-            result: tuple[bool, BytesIO] = func(*args, **kwargs)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            result = await func(*args, **kwargs)
             if result[0]:
                 for path in attrs:
                     path.unlink(missing_ok=True)
@@ -42,6 +49,9 @@ class Helpers:
 
     OUTPUT_BMP_FILE: Final[Path] = Path("output.bmp")
     OUTPUT_PNG_FILE: Final[Path] = Path("output.png")
+
+    UUIDStr = NewType("UUIDStr", str)
+    IPv4Str = NewType("IPv4Str", str)
 
     tzBot: "TZBot" = None
 
@@ -152,9 +162,16 @@ class Helpers:
         return bool(ipRegex.match(ip))
 
     @staticmethod
-    async def isUUID(uniqueId: str) -> bool:
-        pattern = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
-        return bool(pattern.match(uniqueId))
+    def is_ip(ip: str) -> TypeIs[IPv4Str]:
+        try:
+            ipaddress.ip_address(ip)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def is_uuid(uniqueId: str) -> TypeIs[UUIDStr]:
+        return bool(Helpers.UUID_PATTERN.match(uniqueId))
 
     @staticmethod
     async def generateCharSequence(n: int) -> str:

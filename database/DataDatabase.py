@@ -1,9 +1,10 @@
 import asyncio
 from pathlib import Path
+from typing import Final
+from shared.Helpers import Helpers
 
 import aiomysql
 import aiosqlite
-from typing_extensions import Final
 
 from config.Config import MariaDBConfig
 from shell.Logger import Logger
@@ -56,7 +57,7 @@ class Database:
         query: str = "SELECT timezone from timezones WHERE user = ?"
         return await this.executeGetStrQuery(query, (userId,))
 
-    async def assignUUIDToUserId(this, uuid: str, userId: int, timezone: str) -> bool:
+    async def assignUUIDToUserId(this, uuid: Helpers.UUIDStr, userId: int, timezone: str) -> bool:
         query: str = "INSERT INTO timezones (user, uuid, timezone, alias) VALUES (?, ?, ?, ?) ON CONFLICT(user) DO UPDATE SET uuid = ?;"
         mdbQuery: str = "INSERT INTO timezones (user, uuid, timezone, alias) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE uuid = %s;"
 
@@ -70,10 +71,10 @@ class Database:
         query: str = "SELECT uuid from timezones WHERE user = ?"
         return await this.executeGetStrQuery(query, (userId,))
 
-    async def getUserIdByUUID(this, uuid: str) -> str | None:
+    async def getUserIdByUUID(this, uuid: Helpers.UUIDStr) -> str | None:
         query: str = "SELECT user from timezones WHERE uuid = ?"
         return await this.executeGetStrQuery(query, (uuid,))
 
-    async def getTimezoneByUUID(this, uuid: str) -> str | None:
+    async def getTimezoneByUUID(this, uuid: Helpers.UUIDStr) -> str | None:
         query: str = "SELECT timezone from timezones WHERE uuid = ?"
         return await this.executeGetStrQuery(query, (uuid,))

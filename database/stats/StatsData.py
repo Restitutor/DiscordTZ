@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Self
 
 import aiofiles
 from dataclasses_json import dataclass_json
@@ -25,7 +26,7 @@ class StatsData:
     ranCommandNames: dict[str, int] = field(default_factory=dict)
 
     @classmethod
-    async def createAll(cls, file: Path) -> tuple["StatsData", Path]:
+    async def createAll(cls, file: Path) -> tuple[Self, Path]:
         file.parent.mkdir(parents=True, exist_ok=True)
 
         instance = cls()
@@ -36,7 +37,7 @@ class StatsData:
         return instance, file
 
     @classmethod
-    async def loadStatsAtDate(cls, date: datetime) -> tuple["StatsData", Path, datetime]:
+    async def loadStatsAtDate(cls, date: datetime) -> tuple[Self, Path, datetime]:
         statsDir = Path("stats")
         date = date.replace(minute=0, second=0, microsecond=0)
         dateDir = statsDir / f"stats-{date.strftime('%Y-%m-%d')}"
@@ -58,7 +59,7 @@ class StatsData:
 
 
     @classmethod
-    async def loadBulk(cls, startDate: datetime | None = None, endDate: datetime | None = None) -> list[tuple[datetime, "StatsData"]]:
+    async def loadBulk(cls, startDate: datetime | None = None, endDate: datetime | None = None) -> list[tuple[datetime, Self]]:
         statsDir = Path("stats")
         batchSize = 50
 
@@ -90,7 +91,7 @@ class StatsData:
             now = now + timedelta(hours=1)
 
         if len(tasks) > batchSize:
-            allResults: list[tuple["StatsData", Path, datetime]] = []
+            allResults: list[tuple[Self, Path, datetime]] = []
             for i in range(0, len(tasks), batchSize):
                 batch = tasks[i:i + batchSize]
                 result = await asyncio.gather(*batch, return_exceptions=False)
@@ -99,7 +100,7 @@ class StatsData:
             returnValue = [(time, data) for data, _, time in allResults]
 
         else:
-            results: list[tuple["StatsData", Path, datetime]] = await asyncio.gather(*tasks, return_exceptions=False)
+            results: list[tuple[Self, Path, datetime]] = await asyncio.gather(*tasks, return_exceptions=False)
             returnValue = [(time, data) for data, _, time in results]
 
         return sorted(returnValue, key=lambda item: item[0])

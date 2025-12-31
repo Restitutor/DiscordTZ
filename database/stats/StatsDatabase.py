@@ -13,12 +13,17 @@ from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
-def collectCommandStats(func):
+from typing import ParamSpec, TypeVar, Callable, Coroutine, Any
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def collectCommandStats(func: Callable[P, Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
     if not callable(func) or not inspect.iscoroutinefunction(func):
         raise RuntimeError(f"{func.__name__} is not compatible!")
 
     @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         boundArgs = inspect.signature(func).bind(*args, **kwargs)
         boundArgs.apply_defaults()
         ctx: discord.ApplicationContext = boundArgs.arguments.get("ctx")
@@ -28,7 +33,7 @@ def collectCommandStats(func):
 
         Logger.log(f"Executing command \"{qualifiedName}\"...")
         await statsDbInstance.addRanCommandName(qualifiedName)
-        result: bool = await func(*args, **kwargs)
+        result: R = await func(*args, **kwargs)
         if result:
             await statsDbInstance.addSuccessfulCommandExecution()
             Logger.success(f"Execution of \"{qualifiedName}\" was successful!")

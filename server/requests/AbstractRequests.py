@@ -16,12 +16,17 @@ from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
-def autoRespond(func):
-    async def wrapper(this, *args, **kwargs):
+from typing import ParamSpec, TypeVar, Callable, Coroutine, Any
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def autoRespond(func: Callable[P, Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
+    async def wrapper(this, *args: P.args, **kwargs: P.kwargs) -> R:
         if not inspect.iscoroutinefunction(func):
             raise RuntimeError("Annotated function isn't async!")
 
-        result = await func(this)
+        result = await func(this, *args, **kwargs)
         await this.respond()
         return result
     return wrapper
@@ -130,8 +135,7 @@ class UUIDRequest(APIRequest):
         this.uuid = data.get("uuid")
 
     async def process(this) -> None:
-        await super().process()
-        if (not this.response and this.uuid is None) or not await Helpers.isUUID(this.uuid):
+        if (not this.response and this.uuid is None) or not Helpers.isUUID(this.uuid):
             this.response = ErrorCode.BAD_REQUEST
             this.response.message = "Invalid UUID"
 

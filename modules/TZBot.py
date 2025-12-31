@@ -8,7 +8,7 @@ import tarfile
 import time
 from copy import deepcopy
 from pathlib import Path
-from typing import Final, Dict, Set, AsyncGenerator, Tuple
+from typing import Final, AsyncGenerator
 
 import discord
 import geoip2
@@ -31,10 +31,17 @@ from server.APIServer import APIServer
 from server.ServerLogger import ServerLogger
 from shared.Helpers import Helpers
 from shell.Logger import Logger
+from typing import Literal
+
+ModuleName = Literal[
+    "BotProfile", "Chroma", "Help", "Image", 
+    "ModuleManagement", "Quote", "ServerLogging", 
+    "TzApiKeyManagement", "TzControlCommands", "TzLink"
+]
 
 
 class TZBot(bridge.Bot):
-    loadedModules: list[str] = []
+    loadedModules: list[ModuleName] = []
     loadedCommands: list[Command] = []
 
     CONFIG_FILE: Final[Path] = Path("config.json")
@@ -49,8 +56,10 @@ class TZBot(bridge.Bot):
     GEO_IP_URL: Final[str] = "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz"
     DAY_SECONDS: Final[int] = 86_400
 
-    IMAGE_CONTENT_TYPES: Final[Set[str]] = {"image/bmp", "image/png", "image/jpeg", "image/webp"}
-    HTTP_HEADERS: Final[Dict[str, str]] = {
+    type Headers = dict[str, str]
+
+    IMAGE_CONTENT_TYPES: Final[set[str]] = {"image/bmp", "image/png", "image/jpeg", "image/webp"}
+    HTTP_HEADERS: Final[Headers] = {
         "User-Agent": "TZUtil",
         "Accept": "text/html,application/xhtml+xml,application/xml",
         "Accept-Language": "en-US,en;q=0.5",
@@ -123,7 +132,7 @@ class TZBot(bridge.Bot):
 
     # HTTP Client
     @contextlib.asynccontextmanager
-    async def getNewClient(this, contentTypes: Set[str]) -> AsyncGenerator[ClientSession]:
+    async def getNewClient(this, contentTypes: set[str]) -> AsyncGenerator[ClientSession]:
         headersCpy = deepcopy(this.HTTP_HEADERS)
         headersCpy["Accept"] = ",".join(contentTypes)
         session = ClientSession(headers=headersCpy)
@@ -133,7 +142,7 @@ class TZBot(bridge.Bot):
             await session.close()
 
     # Internet shit
-    async def downloadFile(this, url: str, contentTypes: Set[str]) -> Tuple[str, bytes] | None:
+    async def downloadFile(this, url: str, contentTypes: set[str]) -> tuple[str, bytes] | None:
         Logger.log(f"Downloading from {url}")
         try:
             async with this.getNewClient(contentTypes) as session:
@@ -224,13 +233,13 @@ class TZBot(bridge.Bot):
     def getAvailableModules(this) -> list[str]:
         return [file.stem[3:] for file in this.MODULES_DIR.glob("mod*.py")]
 
-    def getLoadedModules(this) -> list[str]:
+    def getLoadedModules(this) -> list[ModuleName]:
         return this.loadedModules
 
     def getUnloadedModules(this) -> list[str]:
         return [module for module in this.getAvailableModules() if module not in this.loadedModules]
 
-    async def unloadModules(this, modules: list[str]) -> None:
+    async def unloadModules(this, modules: list[ModuleName]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
                 raise ExtensionNotLoaded(f"Module {module} is not loaded")
@@ -245,7 +254,7 @@ class TZBot(bridge.Bot):
         await this.refreshCommands()
         Logger.success(f"Module {", ".join(modules)} unloaded!")
 
-    async def loadModules(this, modules: list[str]) -> None:
+    async def loadModules(this, modules: list[ModuleName]) -> None:
         for module in modules:
             if module not in this.getUnloadedModules():
                 raise ExtensionAlreadyLoaded(f"Module {module} is loaded")
@@ -260,7 +269,7 @@ class TZBot(bridge.Bot):
         await this.refreshCommands()
         Logger.success(f"Modules {", ".join(modules)} loaded!")
 
-    async def reloadModules(this, modules: list[str]) -> None:
+    async def reloadModules(this, modules: list[ModuleName]) -> None:
         for module in modules:
             if module not in this.getLoadedModules():
                 raise ExtensionNotLoaded(f"Module {module} is not loaded")

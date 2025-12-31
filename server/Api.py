@@ -32,10 +32,10 @@ class ApiKey:
         this.validUntil = validUntil
         this.keyId = keyId
 
-    def hasPermissions(this, *permissions: int) -> bool:
+    def hasPermissions(this, *permissions: ApiPermissions) -> bool:
         required = ApiPermissions(0)
         for perm in permissions:
-            required |= ApiPermissions(perm)
+            required |= perm
 
         return (ApiPermissions(this.permissions) & required) == required
 
