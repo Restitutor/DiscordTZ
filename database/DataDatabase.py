@@ -1,9 +1,9 @@
 import asyncio
 from pathlib import Path
+from typing import Final
 
 import aiomysql
 import aiosqlite
-from typing_extensions import Final
 
 from config.Config import MariaDBConfig
 
@@ -41,7 +41,8 @@ class Database:
     async def executeGetStrQuery(this, query: str, values: tuple) -> str | None:
         cursor = await this.conn.execute(query, values)
         await this.conn.commit()
-        if not (val := await cursor.fetchone()):
+        val = await cursor.fetchone()
+        if val is None:
             return None
 
         return str(val[0])

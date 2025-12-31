@@ -8,7 +8,7 @@ import tarfile
 import time
 from copy import deepcopy
 from pathlib import Path
-from typing import Final, Dict, Set, AsyncGenerator, Tuple
+from typing import Final, AsyncGenerator
 
 import discord
 import geoip2
@@ -49,8 +49,10 @@ class TZBot(bridge.Bot):
     GEO_IP_URL: Final[str] = "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz"
     DAY_SECONDS: Final[int] = 86_400
 
-    IMAGE_CONTENT_TYPES: Final[Set[str]] = {"image/bmp", "image/png", "image/jpeg", "image/webp"}
-    HTTP_HEADERS: Final[Dict[str, str]] = {
+    type Headers = dict[str, str]
+
+    IMAGE_CONTENT_TYPES: Final[set[str]] = {"image/bmp", "image/png", "image/jpeg", "image/webp"}
+    HTTP_HEADERS: Final[Headers] = {
         "User-Agent": "TZUtil",
         "Accept": "text/html,application/xhtml+xml,application/xml",
         "Accept-Language": "en-US,en;q=0.5",
@@ -116,7 +118,7 @@ class TZBot(bridge.Bot):
 
     # HTTP Client
     @contextlib.asynccontextmanager
-    async def getNewClient(this, contentTypes: Set[str]) -> AsyncGenerator[ClientSession]:
+    async def getNewClient(this, contentTypes: set[str]) -> AsyncGenerator[ClientSession]:
         headersCpy = deepcopy(this.HTTP_HEADERS)
         headersCpy["Accept"] = ",".join(contentTypes)
         session = ClientSession(headers=headersCpy)
@@ -126,7 +128,7 @@ class TZBot(bridge.Bot):
             await session.close()
 
     # Internet shit
-    async def downloadFile(this, url: str, contentTypes: Set[str]) -> Tuple[str, bytes] | None:
+    async def downloadFile(this, url: str, contentTypes: set[str]) -> tuple[str, bytes] | None:
         Logger.log(f"Downloading from {url}")
         try:
             async with this.getNewClient(contentTypes) as session:

@@ -11,3 +11,4 @@ IfFormatter.py
 timezones.sqlite
 *.ttc
 *.ttf
+__pycache__/

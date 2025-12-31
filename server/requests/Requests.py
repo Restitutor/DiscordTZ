@@ -1,4 +1,5 @@
 import asyncio
+from typing import override
 
 import geoip2.errors
 
@@ -16,6 +17,7 @@ class TimeZoneRequest(UserIdRequest):
     def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot, ApiPermissions.DISCORD_ID)
 
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()
@@ -34,6 +36,7 @@ class TimeZoneFromIPRequest(APIRequest):
         this.askedIp = str(this.data.get("ip"))
         this.data["ip"] = "<redacted>"
 
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()
@@ -61,6 +64,7 @@ class PingRequest(SimpleRequest):
     def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot)
 
+    @override
     @autoRespond
     async def process(this) -> None:
         if not this.response:
@@ -75,6 +79,7 @@ class UserIdUUIDLinkPost(UUIDRequest):
         super().__init__(client, headers, data, tzBot, ApiPermissions.UUID_POST)
         this.timezone = this.data.get("timezone")
 
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()
@@ -101,6 +106,7 @@ class TimezoneFromUUIDRequest(UUIDRequest):
     def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot, ApiPermissions.MINECRAFT_UUID)
 
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()
@@ -119,6 +125,7 @@ class IsLinkedRequest(UUIDRequest):
     def __init__(self, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot, ApiPermissions.MINECRAFT_UUID)
 
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()
@@ -134,6 +141,7 @@ class UserIDFromUUIDRequest(UUIDRequest):
     def __init__(self, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot, ApiPermissions.MINECRAFT_UUID, ApiPermissions.DISCORD_ID)
 
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()

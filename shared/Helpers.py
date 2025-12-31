@@ -12,13 +12,18 @@ from typing_extensions import Final
 from shell.Logger import Logger
 
 
-def cleanupAfter(*attrs: Path | str):
-    def decorator(func):
+from typing import ParamSpec, TypeVar, Callable, Coroutine, Any
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def cleanupAfter(*attrs: Path | str) -> Callable[[Callable[P, Coroutine[Any, Any, R]]], Callable[P, Coroutine[Any, Any, R]]]:
+    def decorator(func: Callable[P, Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
         if not inspect.iscoroutinefunction(func):
             raise RuntimeError(f"{func.__name__} is not callable!")
 
-        async def wrapper(*args, **kwargs):
-            result: tuple[bool, BytesIO] = func(*args, **kwargs)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            result = await func(*args, **kwargs)
             if result[0]:
                 for path in attrs:
                     path.unlink(missing_ok=True)

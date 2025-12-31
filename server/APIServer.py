@@ -1,4 +1,5 @@
 import asyncio
+from typing import TypedDict, Any
 
 from server.ServerCrypto import AESDecrypt
 from server.protocol.Client import Client
@@ -8,6 +9,11 @@ from server.requests.RequestTypes import RequestType
 from server.requests.Requests import SimpleRequest
 from shared.Helpers import Helpers
 from shell.Logger import Logger
+
+
+class APIPayload(TypedDict, total=False):
+    requestType: str
+    data: dict[str, Any]
 
 
 class APIServer:
@@ -49,7 +55,7 @@ class APIServer:
 
     async def processRequest(this, msg: bytes, client: Client) -> None:
         await this.tzBot.statsDb.addReceivedDataBandwidth(len(msg))
-        jsonRequest: dict | None = await Helpers.parseJson(msg.decode("utf-8", errors="ignore"))
+        jsonRequest: APIPayload | None = await Helpers.parseJson(msg.decode("utf-8", errors="ignore"))
 
         if isinstance(client, TCPClient):
             protocol: str = "TCP"
