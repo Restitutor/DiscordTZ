@@ -4,7 +4,6 @@ import random
 import string
 from enum import IntFlag
 
-from server.ServerCrypto import AESDecrypt, AESEncrypt
 from shared.Helpers import Helpers
 
 
@@ -45,9 +44,7 @@ class ApiKey:
 
     def toDbForm(this) -> str:
         return (
-            base64.encodebytes(
-                AESEncrypt(json.dumps(this.__dict__, separators=(",", ":")).encode(), str(Helpers.tzBot.config.server.apiKeysKey).encode())
-            )
+            base64.encodebytes(Helpers.AESEncrypt(json.dumps(this.__dict__, separators=(",", ":")).encode(), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
             .decode()
             .replace("\n", "")
         )
@@ -55,7 +52,7 @@ class ApiKey:
     @classmethod
     def fromDbForm(cls, dbFormKey: str):  # noqa: ANN206
         try:
-            data = json.loads(AESDecrypt(base64.decodebytes(dbFormKey.encode()), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
+            data = json.loads(Helpers.AESDecrypt(base64.decodebytes(dbFormKey.encode()), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
         except (json.decoder.JSONDecodeError, KeyError):
             return None
 

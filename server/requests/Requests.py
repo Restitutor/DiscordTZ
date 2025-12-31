@@ -1,6 +1,7 @@
 import asyncio
 
 import geoip2.errors
+import tzlocal
 
 from server.Api import ApiPermissions
 from server.ServerError import ErrorCode
@@ -9,7 +10,6 @@ from server.requests.AbstractRequests import APIRequest, SimpleRequest, UserIdRe
     autoRespond
 from shared.Helpers import Helpers
 from shared.Timezones import Timezones
-from shell.Logger import Logger
 
 
 class TimeZoneRequest(UserIdRequest):
@@ -43,18 +43,23 @@ class TimeZoneFromIPRequest(APIRequest):
                 this.response = ErrorCode.BAD_REQUEST
             else:
                 try:
-                    requestCity = Helpers.tzBot.maxMindDb.city(this.askedIp)
-                    if not requestCity:
-                        this.response = ErrorCode.NOT_FOUND
-                    else:
+                    requestCity = this.tzBot.maxMindDb.city(this.askedIp)
+                    if requestCity:
                         this.response = ErrorCode.OK
                         this.response.message = requestCity.location.time_zone
-                        if not this.response.message:
+                    else:
+                        if Helpers.isLocalSubnet(this.askedIp) and Helpers.isLocalSubnet(this.client.ip.address):
+                            this.response = ErrorCode.OK
+                            this.response.message = tzlocal.get_localzone().key
+                        else:
                             this.response = ErrorCode.NOT_FOUND
 
                 except geoip2.errors.AddressNotFoundError as e:
-                    Logger.error(f"Error getting timezone from IP {this.askedIp}: {e!s}")
-                    this.response = ErrorCode.BAD_REQUEST
+                    if Helpers.isLocalSubnet(this.askedIp) and Helpers.isLocalSubnet(this.client.ip.address):
+                        this.response = ErrorCode.OK
+                        this.response.message = tzlocal.get_localzone().key
+                    else:
+                        this.response = ErrorCode.NOT_FOUND
 
 
 class PingRequest(SimpleRequest):
@@ -116,7 +121,7 @@ class TimezoneFromUUIDRequest(UUIDRequest):
 
 
 class IsLinkedRequest(UUIDRequest):
-    def __init__(self, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
+    def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot, ApiPermissions.MINECRAFT_UUID)
 
     @autoRespond
@@ -124,14 +129,15 @@ class IsLinkedRequest(UUIDRequest):
         await super().process()
 
         if not this.response:
-            if await Helpers.tzBot.db.getTimezoneByUUID(this.uuid):
+            if discordUsername := await this.tzBot.db.getUserIdByUUID(this.uuid):
                 this.response = ErrorCode.OK
+                this.response.message = (await this.tzBot.fetch_user(discordUsername)).name
             else:
                 this.response = ErrorCode.NOT_FOUND
 
 
 class UserIDFromUUIDRequest(UUIDRequest):
-    def __init__(self, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
+    def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot, ApiPermissions.MINECRAFT_UUID, ApiPermissions.DISCORD_ID)
 
     @autoRespond
@@ -144,3 +150,18 @@ class UserIDFromUUIDRequest(UUIDRequest):
             else:
                 this.response = ErrorCode.OK
                 this.response.message = userId
+
+class UUIDFromUserIDRequest(UserIdRequest):
+    def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
+        super().__init__(client, headers, data, tzBot)
+
+    @autoRespond
+    async def process(this) -> None:
+        await super().process()
+
+        if not this.response:
+            if not (uid := await this.tzBot.db.getUUIDByUserId(this.userId)):
+                this.response = ErrorCode.NOT_FOUND
+            else:
+                this.response = ErrorCode.OK
+                this.response.message = uid

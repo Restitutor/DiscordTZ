@@ -19,10 +19,11 @@ class ImageGen(commands.Cog):
 
         if not this.COLORLIST_FILE.is_file():
             this.colorSet = set()
-
-        with this.COLORLIST_FILE.open("rb") as f:
-            data = f.read()
-            this.colorSet = {(data[i], data[i + 1], data[i + 2]) for i in range(0, len(data), 3)}
+            this.COLORLIST_FILE.touch(exist_ok=True)
+        else:
+            with this.COLORLIST_FILE.open("rb") as f:
+                data = f.read()
+                this.colorSet = {(data[i], data[i + 1], data[i + 2]) for i in range(0, len(data), 3)}
 
     @discord.slash_command(name="generate", description="Generate an image using math!")
     @commands.cooldown(1, 10, commands.BucketType.user)

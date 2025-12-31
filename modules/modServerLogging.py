@@ -63,7 +63,7 @@ class ServerLogging(commands.Cog):
         return template, fileSendList
 
     async def onError(this, request: SimpleRequest) -> None:
-        lock = "🔒" if request.client.aesKey else ""
+        lock = "🔒" if request.client.flags["e"] else ""
         embed: discord.Embed = discord.Embed(title=f"{lock} **Error** {lock}".strip(), color=discord.Color.red())
         embed, fileSendList = await this.createBasicEmbed(request, embed)
 
@@ -84,7 +84,7 @@ class ServerLogging(commands.Cog):
         if isinstance(request, UserIdUUIDLinkPost):
             request.response.message = "<redacted>"
 
-        lock = "🔒" if request.client.aesKey else ""
+        lock = "🔒" if request.client.flags["e"] else ""
         embed: discord.Embed = discord.Embed(title=f"{lock} **Success** {lock}".strip(), color=discord.Color.green())
         embed, fileSendList = await this.createBasicEmbed(request, embed)
 

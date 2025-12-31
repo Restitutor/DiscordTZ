@@ -1,16 +1,26 @@
 import asyncio
+import copy
+import struct
+import zlib
+from typing import Final
 
-from server.ServerCrypto import AESDecrypt
 from server.protocol.Client import Client
 from server.protocol.TCP import TCPClient
 from server.protocol.UDP import UDPProtocol
+from server.requests.AbstractRequests import SimpleRequest
 from server.requests.RequestTypes import RequestType
-from server.requests.Requests import SimpleRequest
 from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
 class APIServer:
+    CRC32_CHECKSUM_LEN: Final[int] = 4
+    DEFAULT_FLAGS: Final[dict[str, bool]] = {
+        "e": False,
+        "p": False,
+        "g": False
+    }
+
     protocol: UDPProtocol
     transport: asyncio.DatagramTransport
 
@@ -44,13 +54,47 @@ class APIServer:
             Logger.error(f"Error reading from client: {e}")
             return
 
-        client: TCPClient = TCPClient(reader, writer, this.aesKey)
+        client: TCPClient = TCPClient(reader, writer, this.aesKey, this, this.DEFAULT_FLAGS)
         asyncio.create_task(this.processRequest(msg, client))
+
+    async def parsePacketInfo(this, msg: bytes) -> tuple[int, dict[str, bool]] | None:
+        tLetter, zLetter, dataOffset = struct.unpack(">BBB", msg[0:3])
+        if tLetter != ord("t") or zLetter != ord("z") or dataOffset < 3:
+            return None
+
+        packetFlags = copy.deepcopy(this.DEFAULT_FLAGS)
+
+        flagsArray = msg[3:dataOffset]
+
+        validFlags = packetFlags.keys()
+        seen: set[str] = set()
+        for flagInt in flagsArray:
+            flag = chr(flagInt)
+            if flag in validFlags and flag not in seen:
+                packetFlags[flag] = True
+                seen.add(flag)
+            else:
+                return None
+
+        return dataOffset, packetFlags
+
+    async def respondToInvalid(this, msg: bytes, client: Client):
+        if isinstance(client, TCPClient):
+            protocol = "TCP"
+        else:
+            protocol = "UDP"
+
+        Logger.log(f"Got an invalid {protocol} request: {msg}")
+        Logger.log(client.flags)
+        fakeJson: dict = {"requestType": "INVALID", "data": {"message": msg}}
+        fakeJsonData: dict = fakeJson.pop("data")
+
+        request = SimpleRequest(client, fakeJson, fakeJsonData, this.tzBot)
+        await request.process()
+        return
 
     async def processRequest(this, msg: bytes, client: Client) -> None:
         await this.tzBot.statsDb.addReceivedDataBandwidth(len(msg))
-        jsonRequest: dict | None = await Helpers.parseJson(msg.decode("utf-8", errors="ignore"))
-
         if isinstance(client, TCPClient):
             protocol: str = "TCP"
         else:
@@ -58,40 +102,67 @@ class APIServer:
 
         await this.tzBot.statsDb.addProtocol(protocol)
 
-        if jsonRequest:
-            Logger.log(f"Got an unencrypted {protocol} request: {jsonRequest}")
-            client.aesKey = None
+        packetInfo: tuple[int, dict[str, bool]] | None = await this.parsePacketInfo(msg)
+        if not packetInfo:
+            Logger.error("Failed to get packet info.")
+            await this.respondToInvalid(msg, client)
+            return
 
-        else:
-            decrypted = AESDecrypt(msg, this.aesKey)
-            jsonRequest = await Helpers.parseJson(decrypted)
+        packetHeaderLen = packetInfo[0]
+        packetFlags: dict[str, bool] = packetInfo[1]
+        client.flags = packetFlags
+        content = msg[packetHeaderLen:]
 
-            if not jsonRequest:
-                client.aesKey = None
-                Logger.log(f"Got an invalid {protocol} request: {msg}")
-                fakeJson: dict = {"requestType": "INVALID", "data": {"message": msg}}
-                fakeJsonData: dict = fakeJson.pop("data")
+        appliedFlags = []
 
-                request = SimpleRequest(client, fakeJson, fakeJsonData, this.tzBot)
-                await request.process()
-
+        # Process flags
+        if packetFlags["e"]:
+            decrypted = Helpers.AESDecrypt(content, this.aesKey)
+            if not decrypted:
+                client.flags = this.DEFAULT_FLAGS
+                await this.respondToInvalid(content, client)
                 return
+            content = decrypted
+            appliedFlags.append("encrypted")
+        else:
+            appliedFlags.append("unencrypted")
 
-            Logger.log(f"Got an encrypted {protocol} request: {jsonRequest}")
-            client.encrypt = True
+        if packetFlags["g"]:
+            decompressed = Helpers.unGzip(content)
+            if not decompressed:
+                client.flags = this.DEFAULT_FLAGS
+                await this.respondToInvalid(msg, client)
+                return
+            content = decompressed
+            appliedFlags.append("GZIPped")
+
+        if packetFlags["p"]:
+            unpacked = Helpers.msgpackToJson(content)
+            if not unpacked:
+                client.flags = this.DEFAULT_FLAGS
+                await this.respondToInvalid(msg, client)
+                return
+            content = unpacked
+            appliedFlags.append("MSGPack")
+        else:
+            appliedFlags.append("JSON")
+
+        jsonRequest: dict | None = await Helpers.parseJson(content.decode("utf-8", errors="ignore"))
+        if not jsonRequest:
+            client.flags = this.DEFAULT_FLAGS
+            await this.respondToInvalid(content, client)
+            return
 
         payload: dict = jsonRequest.pop("data", {})
         requestType: str = jsonRequest.get("requestType", "INVALID")
 
         try:
             reqType: RequestType = getattr(RequestType, requestType)
-        except AttributeError:
-            Logger.error(f"Invalid request type: {requestType}, defaulting to SimpleRequest")
+            await this.tzBot.statsDb.addEstablishedKnownRequestType(requestType)
 
-            request = SimpleRequest(client, jsonRequest, payload, this.tzBot)
+            Logger.log(f"Got a known {protocol}, {", ".join(appliedFlags)} request: {content.decode()}")
+
+            request = reqType(client, jsonRequest, payload, this.tzBot)
             await request.process()
+        except AttributeError:
             return
-
-        await this.tzBot.statsDb.addEstablishedKnownRequestType(requestType)
-        request = reqType(client, jsonRequest, payload, this.tzBot)
-        await request.process()

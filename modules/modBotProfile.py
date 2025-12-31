@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import io
 import json
 from dataclasses import dataclass
 from json import JSONDecodeError
@@ -27,9 +28,12 @@ class Profile:
 class BotProfile(commands.Cog):
     client: TZBot
 
+    PROFILE_GROUP = discord.SlashCommandGroup(name="profile", description="[Bot Owner] Bot's profile related stuff", checks=[commands.is_owner()])
+
     PROFILE_FILE: Final[Path] = Path("state/profile.json")
     ACTIVITY_TYPES: Final[list[str]] = ["unknown", "playing", "streaming", "listening", "watching"]
     PRESENCE_TYPES: Final[list[str]] = ["Online", "Offline", "Idle", "DND", "Invisible", "Streaming"]
+    PFP_CONTENT_TYPES: Final[set[str]] = {"image/gif", "image/png", "image/jpeg", "image/webp"}
 
     currentProfile: Profile
     permanentProfile: Profile
@@ -39,6 +43,7 @@ class BotProfile(commands.Cog):
             Logger.warning(f"{this.PROFILE_FILE.name} doesn't exist!")
             Logger.log("Falling back to defaults...")
             this.currentProfile = Profile()
+            asyncio.create_task(this.saveStatus())
         else:
             with this.PROFILE_FILE.open("r") as f:
                 try:
@@ -64,9 +69,9 @@ class BotProfile(commands.Cog):
         await this.client.change_presence(status=discord.Status(this.currentProfile.presence), activity=discord.Activity(type=discord.ActivityType(this.currentProfile.activityType), name=this.currentProfile.activityName))
 
     @commands.is_owner()
-    @discord.slash_command(name="presence", description="[Bot Owner] Change the bot's presence!")
+    @PROFILE_GROUP.command(name="presence", description="[Bot Owner] Change the bot's presence!")
     @collectCommandStats
-    async def changePresence(this, ctx: bridge.BridgeContext, presence: discord.Option(str, "Presence to set for the bot", choices=PRESENCE_TYPES), persistent: discord.Option(bool, "If the status stays after restart/cog reload", required=False, default=False)) -> bool:
+    async def changePresence(this, ctx: discord.ApplicationContext, presence: discord.Option(str, "Presence to set for the bot", choices=PRESENCE_TYPES), persistent: discord.Option(bool, "If the status stays after restart/cog reload", required=False, default=False)) -> bool:
         presence: str
         if persistent:
             this.permanentProfile.presence = presence.lower()
@@ -79,9 +84,9 @@ class BotProfile(commands.Cog):
         return True
 
     @commands.is_owner()
-    @discord.slash_command(name="activity", description="[Bot Owner] Change the bot's activity!")
+    @PROFILE_GROUP.command(name="activity", description="[Bot Owner] Change the bot's activity!")
     @collectCommandStats
-    async def changeActivity(this, ctx: bridge.BridgeContext, activitytype: discord.Option(str, "Activity type for the bot", choices=ACTIVITY_TYPES, required=False, default=None), title: discord.Option(str, "The activity body", required=False, default=None), persistent: discord.Option(bool, "If the status stays after restart/cog reload", required=False, default=False)) -> bool:
+    async def changeActivity(this, ctx: discord.ApplicationContext, activitytype: discord.Option(str, "Activity type for the bot", choices=ACTIVITY_TYPES, required=False, default=None), title: discord.Option(str, "The activity body", required=False, default=None), persistent: discord.Option(bool, "If the status stays after restart/cog reload", required=False, default=False)) -> bool:
         if not activitytype and not title:
             await ctx.respond("Either the activity type or the activity title has to be set!")
             return False

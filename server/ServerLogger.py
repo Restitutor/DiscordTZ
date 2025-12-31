@@ -11,6 +11,12 @@ from shared.Helpers import Helpers
 
 class ServerLogger:
     MAX_DATA_EMBED_LEN: Final[int] = 900
+    FLAGS: Final[dict[str, str]] = {
+        "e": "ENCRYPTED",
+        "g": "GZIP",
+        "p": "MSGPACK"
+    }
+
     def __init__(this, tzBot: "TZBot", loggingEnabled: bool) -> None:
         this.tzBot = tzBot
         this.loggingEnabled = loggingEnabled
@@ -32,10 +38,10 @@ class ServerLogger:
             request.response.message = "<redacted>"
 
         if len(str(request.data)) < this.MAX_DATA_EMBED_LEN:
-            embed.add_field(name="Request Data", value=f"```{json.dumps(request.data)}```", inline=False)
+            embed.add_field(name="Request Data", value=f"```{str(request.data).replace("'", "\"")}```", inline=False)
         else:
             embed.add_field(name="Request Data", value=f"Request is included in the file below due to its size.", inline=False)
-            requestFile = discord.File(io.BytesIO(json.dumps(request.data).encode("utf-8")), "RequestData.json")
+            requestFile = discord.File(io.BytesIO(str(request.data).replace("'", "\"").encode("utf-8")), "RequestData.json")
             fileSendList.append(requestFile)
 
         if len(str(request.response)) < this.MAX_DATA_EMBED_LEN:
@@ -45,17 +51,20 @@ class ServerLogger:
             responseFile = discord.File(io.BytesIO(json.dumps(request.response.__dict__).encode("utf-8")), "ResponseData.json")
             fileSendList.append(responseFile)
 
-        lock = "🔒" if request.client.aesKey else ""
-        warning = "⚠️" if request.city.country.iso_code in Helpers.BLACKLISTED_COUNTRIES else ""
+        lock = "🔒" if request.client.flags["e"] else ""
+        warning = "⚠️" if request.city and (request.city.country.iso_code in Helpers.BLACKLISTED_COUNTRIES) else ""
 
         packetName: str = request.headers["requestType"]
         protocol: str = request.protocol
         source: str = f"{warning} {await Helpers.getCountryOrHost(request)} {warning}".strip()
 
+        flags: list[str] = [this.FLAGS[flag] for flag in request.client.flags.keys() if request.client.flags[flag]]
+
         description = "\n".join([
             f"**Packet**: {packetName}",
             f"**Protocol**: {protocol}",
             f"**Source**: {source}",
+            f"**Flags**: {", ".join(flags)}"
         ])
 
         embed.description = description
@@ -70,4 +79,3 @@ class ServerLogger:
             embed.colour = discord.Color.red()
             embed.title = f"{lock} **Error** {lock}".strip()
             await this.tzBot.errorChannel.send(embed=embed, files=fileSendList)
-

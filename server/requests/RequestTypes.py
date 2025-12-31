@@ -9,6 +9,7 @@ from server.requests.Requests import (
     TimeZoneRequest,
     UserIDFromUUIDRequest,
     UserIdUUIDLinkPost,
+    UUIDFromUserIDRequest
 )
 
 
@@ -20,6 +21,7 @@ class RequestType(Enum):
     TIMEZONE_FROM_UUID = TimezoneFromUUIDRequest
     IS_LINKED = IsLinkedRequest
     USER_ID_FROM_UUID = UserIDFromUUIDRequest
+    UUID_FROM_USER_ID = UUIDFromUserIDRequest
 
     def __call__(this, *args, **kwargs) -> SimpleRequest:
         return this.value(*args, **kwargs)
