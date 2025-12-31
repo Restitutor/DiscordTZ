@@ -7,6 +7,7 @@ import aiomysql
 import aiosqlite
 
 from config.Config import MariaDBConfig
+from shell.Logger import Logger
 
 
 class Database:
@@ -42,11 +43,7 @@ class Database:
     async def executeGetStrQuery(this, query: str, values: tuple) -> str | None:
         cursor = await this.conn.execute(query, values)
         await this.conn.commit()
-        val = await cursor.fetchone()
-        if val is None:
-            return None
-
-        return str(val[0])
+        return (await cursor.fetchone())[0]
 
     async def setTimezone(this, userId: int, timezone: str, alias: str) -> bool:
         query: str = "INSERT INTO timezones (user, timezone) VALUES (?, ?)\

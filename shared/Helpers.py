@@ -1,15 +1,19 @@
+from typing_extensions import Final
+from pathlib import Path
+from io import BytesIO
 import ipaddress
 import asyncio
+import gzip
 import inspect
 import json
+import os
 import random
 import re
 import string
-from io import BytesIO
-from pathlib import Path
+import msgpack
 
-
-from typing_extensions import Final
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad, pad
 
 from shell.Logger import Logger
 
@@ -218,3 +222,49 @@ class Helpers:
 
         with Helpers.OUTPUT_PNG_FILE.open("rb") as f:
             return True, BytesIO(f.read())
+
+    @staticmethod
+    def AESDecrypt(msg: bytes, key: bytes) -> bytes | None:
+        iv = msg[:16]
+        data = bytearray(msg[16:])
+
+        try:
+            cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+            decryptedData = cipher.decrypt(data)
+            decryptedData = unpad(decryptedData, AES.block_size)
+            return decryptedData.strip()
+        except ValueError:
+            return None
+
+    @staticmethod
+    def AESEncrypt(message: bytes, key: bytes) -> bytes:
+        iv = os.urandom(16)
+        cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+
+        paddedMessage = pad(message, AES.block_size)
+        encryptedMessage = cipher.encrypt(paddedMessage)
+        return iv + encryptedMessage
+
+    @staticmethod
+    def unGzip(msg: bytes) -> bytes | None:
+        try:
+            return gzip.decompress(msg)
+        except Exception:
+            return None
+
+    @staticmethod
+    def compressGzip(msg: bytes) -> bytes:
+        return gzip.compress(msg)
+
+    @staticmethod
+    def msgpackToJson(msg: bytes) -> bytes | None:
+        try:
+            obj = msgpack.unpackb(msg, raw=False)
+            return json.dumps(obj).encode()
+        except Exception:
+            return None
+
+    @staticmethod
+    def jsonToMsgpack(msg: bytes) -> bytes:
+        obj = json.loads(msg.decode())
+        return msgpack.packb(obj)

@@ -1,19 +1,16 @@
 import asyncio
 
-from server.ServerCrypto import AESEncrypt
 from server.protocol.Client import Client
 
 
 class UDPClient(Client):
-    def __init__(this, transport: asyncio.DatagramTransport, ipAddress: tuple[str, int], aesKey: bytes) -> None:
-        super().__init__(ipAddress, aesKey)
+    def __init__(this, transport: asyncio.DatagramTransport, ipAddress: tuple[str, int], aesKey: bytes, server: "APIServer", flags: dict[str, bool] = None) -> None:
+        super().__init__(ipAddress, aesKey, flags, server)
         this.transport: asyncio.DatagramTransport = transport
 
     async def send(this, data: bytes) -> None:
-        if this.aesKey:
-            data = AESEncrypt(data, this.aesKey)
-
-        this.transport.sendto(data, tuple(this.ip))
+        finalData = await this._applyFlags(data)
+        this.transport.sendto(finalData, tuple(this.ip))
 
 
 class UDPProtocol(asyncio.DatagramProtocol):
@@ -24,5 +21,5 @@ class UDPProtocol(asyncio.DatagramProtocol):
         this.transport = transport
 
     def datagram_received(this, data: bytes, addr: tuple[str, int]) -> None:
-        client: UDPClient = UDPClient(this.transport, addr, this.server.aesKey)
+        client: UDPClient = UDPClient(this.transport, addr, this.server.aesKey, this.server, this.server.DEFAULT_FLAGS)
         asyncio.create_task(this.server.processRequest(data, client))

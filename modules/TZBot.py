@@ -70,6 +70,7 @@ class TZBot(bridge.Bot):
     FAIL: Final[discord.Embed] = discord.Embed(title="**Something went wrong.**", description="There was an error in the operation.", color=discord.Color.red())
 
     SORRY_REGEX: Final[re.Pattern] = re.compile(r"sorry", re.IGNORECASE)
+    ROMANIA_REGEX: Final[re.Pattern] = re.compile(r"(vampires?|st(eal|olen?))", re.IGNORECASE)
 
     syncOverride: bool = False
 
@@ -85,6 +86,10 @@ class TZBot(bridge.Bot):
         this.linkCodes: dict[str, tuple[str, str]] = {}
         this.db: Database = Database(this.config.mariadbDetails)
         this.apiDb = ApiKeyDatabase(this.config.server.apiKeysKey)
+        if not this.GEO_IP_DB_FILE.parent.exists():
+            this.GEO_IP_DB_FILE.parent.mkdir(exist_ok=True)
+        if not this.GEO_IP_DB_FILE.exists():
+            this.GEO_IP_DB_FILE.touch(exist_ok=True)
         try:
             this.maxMindDb: geoip2.database.Reader = geoip2.database.Reader(this.GEO_IP_DB_FILE)
         except maxminddb.errors.InvalidDatabaseError:
@@ -93,6 +98,8 @@ class TZBot(bridge.Bot):
 
         this.statsDb: Final[StatsDatabase] = StatsDatabase()
 
+        if not this.DIALOG_OWNERS_FILE.exists():
+            this.DIALOG_OWNERS_FILE.touch()
         try:
             with this.DIALOG_OWNERS_FILE.open("r") as f:
                 this.dialogOwners: set[int] = set(json.loads(f.read()))
@@ -190,13 +197,16 @@ class TZBot(bridge.Bot):
 
     # WSS shit
     async def startRunning(this) -> None:
+        this.API_SERVER_TASK = asyncio.create_task(this.API_SERVER.start())
         await this.start(this.config.token)
+
+    async def stopRunning(this):
+        await this.close()
 
     async def on_connect(this) -> None:
         await this.syncGeoIP()
         await this.loadCogs()
         await this.sync_commands()
-        this.API_SERVER_TASK = asyncio.create_task(this.API_SERVER.start())
 
     async def on_application_command_error(this, ctx: discord.Interaction, error: discord.DiscordException) -> bool:
         embed = await this.getFail(description="There was an error with the command's execution.", user=ctx.user)
@@ -312,5 +322,10 @@ class TZBot(bridge.Bot):
     # Fun stuff
     async def on_message(this, message: discord.Message) -> None:
         await this.process_commands(message)
-        if message.author.id == this.ownerId and bool(this.SORRY_REGEX.search(message.content)):
-            await message.reply("🇨🇦", mention_author=False)
+        if message.author.id == this.ownerId:
+            # Canada
+            if bool(this.SORRY_REGEX.search(message.content)):
+                await message.reply("🇨🇦", mention_author=False)
+            # Romania
+            elif bool(this.ROMANIA_REGEX.search(message.content)):
+                await message.reply("🇷🇴", mention_author=False)

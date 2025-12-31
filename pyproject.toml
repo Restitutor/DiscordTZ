@@ -22,6 +22,8 @@ dependencies = [
     "numpy==2.3.2",
     "matplotlib==3.10.5",
     "srvresolver>=0.3.5",
+    "msgpack>=1.1.2",
+    "audioop-lts>=0.2.2",
 ]
 
 [tool.ruff]

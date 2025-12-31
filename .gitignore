@@ -1,6 +1,9 @@
 .env
 .idea/
 .venv/
+state/
+stats/
+dbFiles/
 docs/
 GeoLite2-City.mmdb
 uv.lock
