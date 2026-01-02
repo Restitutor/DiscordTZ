@@ -21,7 +21,7 @@ class TzLink(commands.Cog):
         testUuid = await this.client.db.getUUIDByUserId(ctx.user.id)
         
         testId = None
-        if testUuid and Helpers.is_uuid(testUuid):
+        if testUuid and Helpers.isUUID(testUuid):
             testId = await this.client.db.getUserIdByUUID(testUuid)
 
         if testUuid and testId and int(testId) == ctx.user.id:
@@ -42,7 +42,7 @@ class TzLink(commands.Cog):
         testUuid = await this.client.db.getUUIDByUserId(ctx.user.id)
 
         testId = None
-        if testUuid and Helpers.is_uuid(testUuid):
+        if testUuid and Helpers.isUUID(testUuid):
             testId = await this.client.db.getUserIdByUUID(testUuid)
 
         if not (testUuid and testId) or int(testId) != ctx.user.id:

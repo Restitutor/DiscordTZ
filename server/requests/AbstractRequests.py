@@ -80,12 +80,11 @@ class PartiallyEncryptedRequest(SimpleRequest):
                 this.response.message = "Bad Request, Unencrypted"
 
 
-class EncryptedRequest(PartiallyEncryptedRequest):
+class EncryptedRequest(SimpleRequest):
     def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot)
 
     async def process(this) -> None:
-        await super().process()
         if not this.client.flags["e"]:
             this.response = ErrorCode.BAD_REQUEST
             this.response.message = "Bad Request, Unencrypted"

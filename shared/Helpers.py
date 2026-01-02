@@ -162,7 +162,7 @@ class Helpers:
         return bool(ipRegex.match(ip))
 
     @staticmethod
-    def is_ip(ip: str) -> TypeIs[IPv4Str]:
+    def isIP(ip: str) -> TypeIs[IPv4Str]:
         try:
             ipaddress.ip_address(ip)
             return True
@@ -170,7 +170,7 @@ class Helpers:
             return False
 
     @staticmethod
-    def is_uuid(uniqueId: str) -> TypeIs[UUIDStr]:
+    def isUUID(uniqueId: str) -> TypeIs[UUIDStr]:
         return bool(Helpers.UUID_PATTERN.match(uniqueId))
 
     @staticmethod
