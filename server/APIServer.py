@@ -81,7 +81,6 @@ class APIServer:
             protocol = "UDP"
 
         Logger.log(f"Got an invalid {protocol} request: {msg}")
-        Logger.log(client.flags)
         fakeJson: dict = {"requestType": "INVALID", "data": {"message": msg}}
         fakeJsonData: dict = fakeJson.pop("data")
 
