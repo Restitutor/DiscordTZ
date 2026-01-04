@@ -35,7 +35,7 @@ class MariaDBConfig:
 @dataclass_json
 @dataclass
 class ServerConfig:
-    port: Annotated[int, "Value must be between 1 and 65535"]
+    port: int
     aesKey: str
     apiKeysKey: str
     apiApproveChannelId: int

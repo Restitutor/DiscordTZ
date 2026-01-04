@@ -1,9 +1,7 @@
-from typing import TypedDict, Any, Literal, Union, Final
 import asyncio
-import ipaddress
 import copy
 import struct
-import zlib
+from typing import Final
 
 from server.protocol.Client import Client
 from server.protocol.TCP import TCPClient
@@ -12,46 +10,6 @@ from server.requests.AbstractRequests import SimpleRequest
 from server.requests.RequestTypes import RequestType
 from shared.Helpers import Helpers
 from shell.Logger import Logger
-
-
-# TODO: These fields need more detail
-class TimezoneRequestData(TypedDict):
-    userId: int
-
-class TimezonePayload(TypedDict):
-    requestType: Literal["TIMEZONE_FROM_USERID"]
-    data: TimezoneRequestData
-
-class IPRequestData(TypedDict):
-    ip: str
-
-class IPPayload(TypedDict):
-    requestType: Literal["TIMEZONE_FROM_IP"]
-    data: IPRequestData
-
-class PingRequestData(TypedDict):
-    pass
-
-class PingPayload(TypedDict):
-    requestType: Literal["PING"]
-    data: PingRequestData
-
-class LinkPostRequestData(TypedDict):
-    uuid: str
-    timezone: str
-
-class LinkPostPayload(TypedDict):
-    requestType: Literal["USER_ID_UUID_LINK_POST"]
-    data: LinkPostRequestData
-
-class UUIDRequestData(TypedDict):
-    uuid: str
-
-class UUIDPayload(TypedDict):
-    requestType: Literal["TIMEZONE_FROM_UUID", "IS_LINKED", "USER_ID_FROM_UUID"]
-    data: UUIDRequestData
-
-APIPayload = Union[TimezonePayload, IPPayload, PingPayload, LinkPostPayload, UUIDPayload]
 
 
 class APIServer:
@@ -105,15 +63,12 @@ class APIServer:
 
         packetFlags = copy.deepcopy(this.DEFAULT_FLAGS)
 
-        flagsArray = msg[3:dataOffset]
-
+        flagsArray = set(msg[3:dataOffset])
         validFlags = packetFlags.keys()
-        seen: set[str] = set()
         for flagInt in flagsArray:
             flag = chr(flagInt)
-            if flag in validFlags and flag not in seen:
+            if flag in validFlags:
                 packetFlags[flag] = True
-                seen.add(flag)
             else:
                 return None
 
@@ -146,7 +101,6 @@ class APIServer:
 
         packetInfo: tuple[int, dict[str, bool]] | None = await this.parsePacketInfo(msg)
         if not packetInfo:
-            Logger.error("Failed to get packet info.")
             await this.respondToInvalid(msg, client)
             return
 
@@ -189,7 +143,7 @@ class APIServer:
         else:
             appliedFlags.append("JSON")
 
-        jsonRequest: APIPayload | None = await Helpers.parseJson(msg.decode("utf-8", errors="ignore"))
+        jsonRequest: dict | None = await Helpers.parseJson(content.decode("utf-8", errors="ignore"))
         if not jsonRequest:
             client.flags = this.DEFAULT_FLAGS
             await this.respondToInvalid(content, client)
@@ -207,4 +161,5 @@ class APIServer:
             request = reqType(client, jsonRequest, payload, this.tzBot)
             await request.process()
         except AttributeError:
+            Logger.log(f"Unknown RequestType: {requestType}")
             return
