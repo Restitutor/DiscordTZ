@@ -203,6 +203,11 @@ class TZBot(bridge.Bot):
     async def stopRunning(this):
         await this.close()
 
+    async def stop(this):
+        await this.API_SERVER.stop()
+        await this.stopRunning()
+        await this.API_SERVER_TASK
+
     async def on_connect(this) -> None:
         await this.syncGeoIP()
         await this.loadCogs()

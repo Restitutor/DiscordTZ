@@ -40,22 +40,18 @@ class ApiKey:
         return (ApiPermissions(this.permissions) & required) == required
 
     def prettyPrintPerms(this) -> list[str]:
-        return [flag.name for flag in ApiPermissions if ApiPermissions(this.permissions) & flag and flag.name is not None]
+        return [flag.name for flag in ApiPermissions if ApiPermissions(this.permissions) & flag and flag.name]
 
     def toDbForm(this) -> str:
         return (
-            base64.encodebytes(Helpers.AESEncrypt(json.dumps(this.__dict__, separators=(",", ":")).encode(), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
+            base64.encodebytes(Helpers.AESCBCEncrypt(json.dumps(this.__dict__, separators=(",", ":")).encode(), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
             .decode()
             .replace("\n", "")
         )
 
     @classmethod
     def fromDbForm(cls, dbFormKey: str):  # noqa: ANN206
-        try:
-            data = json.loads(Helpers.AESDecrypt(base64.decodebytes(dbFormKey.encode()), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
-        except (json.decoder.JSONDecodeError, KeyError):
-            return None
-
+        data = json.loads(Helpers.AESCBCDecrypt(base64.decodebytes(dbFormKey.encode()), str(Helpers.tzBot.config.server.apiKeysKey).encode()))
         return cls(**data)
 
     def __str__(this) -> str:

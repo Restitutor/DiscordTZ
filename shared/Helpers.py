@@ -1,25 +1,27 @@
-from typing_extensions import Final
-from pathlib import Path
-from io import BytesIO
-import ipaddress
 import asyncio
 import gzip
 import inspect
+import ipaddress
 import json
 import os
 import random
 import re
 import string
-import msgpack
+from io import BytesIO
+from pathlib import Path
+from typing import ParamSpec, TypeVar, Callable, Coroutine, Any, NewType
 
+import msgpack
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad, pad
+from Crypto.Util.Padding import pad, unpad
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM, ChaCha20Poly1305
+from typing_extensions import Final
+from typing_extensions import TypeIs
 
 from shell.Logger import Logger
-
-
-from typing import ParamSpec, TypeVar, Callable, Coroutine, Any, NewType
-from typing_extensions import TypeIs
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -178,13 +180,6 @@ class Helpers:
         return "".join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(n))
 
     @staticmethod
-    async def parseJson(data: str) -> dict | None:
-        try:
-            return json.loads(data)
-        except (json.JSONDecodeError, TypeError):
-            return None
-
-    @staticmethod
     @cleanupAfter(OUTPUT_BMP_FILE, OUTPUT_PNG_FILE)
     async def generateImage(r: str, g: str, b: str) -> tuple[bool, BytesIO]:
         if not Helpers.BMPGEN_EXEC_FILE.is_file() or not Helpers.MAGICK_EXEC_FILE.is_file():
@@ -224,9 +219,9 @@ class Helpers:
             return True, BytesIO(f.read())
 
     @staticmethod
-    def AESDecrypt(msg: bytes, key: bytes) -> bytes | None:
+    def AESCBCDecrypt(msg: bytes, key: bytes) -> bytes | None:
         iv = msg[:16]
-        data = bytearray(msg[16:])
+        data = msg[16:]
 
         try:
             cipher = AES.new(key, AES.MODE_CBC, iv=iv)
@@ -237,13 +232,43 @@ class Helpers:
             return None
 
     @staticmethod
-    def AESEncrypt(message: bytes, key: bytes) -> bytes:
+    def AESCBCEncrypt(message: bytes, key: bytes) -> bytes:
         iv = os.urandom(16)
         cipher = AES.new(key, AES.MODE_CBC, iv=iv)
 
         paddedMessage = pad(message, AES.block_size)
         encryptedMessage = cipher.encrypt(paddedMessage)
         return iv + encryptedMessage
+
+    @staticmethod
+    def AESDecrypt(msg: bytes, key: bytes, additional: bytes | None = None) -> bytes:
+        iv = msg[:12]
+        ciphertext = msg[12:]
+
+        cipher = AESGCM(key)
+        return cipher.decrypt(iv, ciphertext, additional)
+
+    @staticmethod
+    def AESEncrypt(msg: bytes, key: bytes, additional: bytes | None = None) -> bytes:
+        iv = os.urandom(12)
+        cipher = AESGCM(key)
+
+        return iv + cipher.encrypt(iv, msg, additional)
+
+    @staticmethod
+    def ChaCha20Decrypt(msg: bytes, key: bytes, additional: bytes | None = None) -> bytes:
+        iv = msg[:12]
+        ciphertext = msg[12:]
+
+        cipher = ChaCha20Poly1305(key)
+        return cipher.decrypt(iv, ciphertext, additional)
+
+    @staticmethod
+    def ChaCha20Encrypt(msg: bytes, key: bytes, additional: bytes | None = None) -> bytes:
+        iv = os.urandom(12)
+        cipher = ChaCha20Poly1305(key)
+
+        return iv + cipher.encrypt(iv, msg, additional)
 
     @staticmethod
     def unGzip(msg: bytes) -> bytes | None:

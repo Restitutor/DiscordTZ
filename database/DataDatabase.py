@@ -1,12 +1,12 @@
 import asyncio
 from pathlib import Path
 from typing import Final
-from shared.Helpers import Helpers
 
 import aiomysql
 import aiosqlite
 
 from config.Config import MariaDBConfig
+from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
@@ -20,30 +20,38 @@ class Database:
 
     async def _postInit(this) -> None:
         this.conn = await aiosqlite.connect(this.DB_FILENAME)
-
-        this.mdbPool = await aiomysql.create_pool(
-            loop=asyncio.get_event_loop(),
-            host=this.mdbConfig.host,
-            user=this.mdbConfig.user,
-            password=this.mdbConfig.password,
-            db=this.mdbConfig.database,
-            port=this.mdbConfig.port,
-            autocommit=True,
-        )
+        try:
+            this.mdbPool = await aiomysql.create_pool(
+                loop=asyncio.get_event_loop(),
+                host=this.mdbConfig.host,
+                user=this.mdbConfig.user,
+                password=this.mdbConfig.password,
+                db=this.mdbConfig.database,
+                port=this.mdbConfig.port,
+                autocommit=True,
+            )
+        except Exception:
+            Logger.error("MDB is not available!")
+            this.mdbPool = None
 
     async def executeSetQuery(this, query: str, mdbQuery: str, values: tuple) -> bool:
         cursor = await this.conn.execute(query, values)
         await this.conn.commit()
 
-        async with this.mdbPool.acquire() as conn, conn.cursor() as cur:
-            await cur.execute(mdbQuery, values)
+        if this.mdbPool:
+            async with this.mdbPool.acquire() as conn, conn.cursor() as cur:
+                await cur.execute(mdbQuery, values)
 
-            return cursor.rowcount != 0 and cur.rowcount != 0
+                return cursor.rowcount != 0 and cur.rowcount != 0
+        return cursor.rowcount != 0
 
     async def executeGetStrQuery(this, query: str, values: tuple) -> str | None:
         cursor = await this.conn.execute(query, values)
         await this.conn.commit()
-        return (await cursor.fetchone())[0]
+        if val := await cursor.fetchone():
+            return val[0]
+
+        return None
 
     async def setTimezone(this, userId: int, timezone: str, alias: str) -> bool:
         query: str = "INSERT INTO timezones (user, timezone) VALUES (?, ?)\

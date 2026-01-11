@@ -64,7 +64,7 @@ class CommandContext:
 # Built-in commands
 class ExitCommand(Command):
     def __init__(this) -> None:
-        super().__init__("exit", "Exit the shell with optional exit code", ["quit", "q"])
+        super().__init__("exit", "Exit the shell with optional exit code", ["quit", "q", "stop"])
 
     async def execute(this, args: list[str], ctx: CommandContext) -> CommandResult:  # noqa: ARG002
         code = 0

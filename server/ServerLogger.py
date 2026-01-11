@@ -5,6 +5,7 @@ from typing import Final
 
 import discord
 
+from server.protocol.APIPayload import PacketFlags
 from server.requests.AbstractRequests import SimpleRequest
 from shared.Helpers import Helpers
 
@@ -51,14 +52,14 @@ class ServerLogger:
             responseFile = discord.File(io.BytesIO(json.dumps(request.response.__dict__).encode("utf-8")), "ResponseData.json")
             fileSendList.append(responseFile)
 
-        lock = "🔒" if request.client.flags["e"] else ""
+        lock = "🔒" if request.client.flags & PacketFlags.AESGCM else ""
         warning = "⚠️" if request.city and (request.city.country.iso_code in Helpers.BLACKLISTED_COUNTRIES) else ""
 
-        packetName: str = request.headers["requestType"]
+        packetName: str = request.packetNameStringRepr()
         protocol: str = request.protocol
         source: str = f"{warning} {await Helpers.getCountryOrHost(request)} {warning}".strip()
 
-        flags: list[str] = [this.FLAGS[flag] for flag in request.client.flags.keys() if request.client.flags[flag]]
+        flags: list[str] = [flag.name for flag in PacketFlags if PacketFlags(request.client.flags) & flag and flag.name is not None]
 
         description = "\n".join([
             f"**Packet**: {packetName}",

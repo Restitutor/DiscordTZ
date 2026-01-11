@@ -4,7 +4,6 @@ import asyncio
 import discord
 
 from modules.TZBot import TZBot
-from server.APIServer import APIServer
 from shell.Logger import Logger
 from shell.Shell import Shell
 

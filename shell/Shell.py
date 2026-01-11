@@ -9,6 +9,7 @@ from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.layout import HSplit, Layout
 from prompt_toolkit.widgets import TextArea
 
+from shared.Helpers import Helpers
 from shell.Commands import ForceSync, Load, ModList, Reload, Unload, createCommandSystem, ForceSaveStats, Graph, \
     CommandRegistry, CommandContext
 from shell.Logger import Logger
@@ -130,4 +131,5 @@ class Shell(Application):
             Logger.error(result.message)
 
         if result.shouldExit:
+            await Helpers.tzBot.stop()
             sys.exit(result.exitCode)

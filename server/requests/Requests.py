@@ -11,11 +11,16 @@ from server.requests.AbstractRequests import APIRequest, SimpleRequest, UserIdRe
     autoRespond
 from shared.Helpers import Helpers
 from shared.Timezones import Timezones
+from shell.Logger import Logger
 
 
 class TimeZoneRequest(UserIdRequest):
     def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot, ApiPermissions.DISCORD_ID)
+
+    @override
+    def packetNameStringRepr(this) -> str:
+        return "TIMEZONE_FROM_USERID"
 
     @override
     @autoRespond
@@ -37,6 +42,10 @@ class TimeZoneFromIPRequest(APIRequest):
         this.data["ip"] = "<redacted>"
 
     @override
+    def packetNameStringRepr(this) -> str:
+        return "TIMEZONE_FROM_IP"
+
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()
@@ -46,28 +55,35 @@ class TimeZoneFromIPRequest(APIRequest):
                 this.response = ErrorCode.BAD_REQUEST
             else:
                 try:
-                    requestCity = this.tzBot.maxMindDb.city(this.askedIp)
-                    if requestCity:
-                        this.response = ErrorCode.OK
-                        this.response.message = requestCity.location.time_zone
-                    else:
-                        if Helpers.isLocalSubnet(this.askedIp) and Helpers.isLocalSubnet(this.client.ip.address):
+                    if await Helpers.isLocalSubnet(this.askedIp):
+                        if await Helpers.isLocalSubnet(this.client.ip.address):
                             this.response = ErrorCode.OK
                             this.response.message = tzlocal.get_localzone().key
                         else:
+                            requestCity = this.tzBot.maxMindDb.city(this.client.ip.address)
+                            if requestCity:
+                                this.response = ErrorCode.OK
+                                this.response.message = requestCity.location.time_zone
+                            else:
+                                this.response = ErrorCode.NOT_FOUND
+                    else:
+                        requestCity = this.tzBot.maxMindDb.city(this.askedIp)
+                        if requestCity:
+                            this.response = ErrorCode.OK
+                            this.response.message = requestCity.location.time_zone
+                        else:
                             this.response = ErrorCode.NOT_FOUND
 
-                except geoip2.errors.AddressNotFoundError as e:
-                    if Helpers.isLocalSubnet(this.askedIp) and Helpers.isLocalSubnet(this.client.ip.address):
-                        this.response = ErrorCode.OK
-                        this.response.message = tzlocal.get_localzone().key
-                    else:
-                        this.response = ErrorCode.NOT_FOUND
-
+                except geoip2.errors.AddressNotFoundError:
+                    this.response = ErrorCode.NOT_FOUND
 
 class PingRequest(SimpleRequest):
     def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot)
+
+    @override
+    def packetNameStringRepr(this) -> str:
+        return "PING"
 
     @override
     @autoRespond
@@ -85,6 +101,10 @@ class UserIdUUIDLinkPost(UUIDRequest):
         this.timezone = this.data.get("timezone")
 
     @override
+    def packetNameStringRepr(this) -> str:
+        return "USER_ID_UUID_LINK_POST"
+
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()
@@ -93,15 +113,15 @@ class UserIdUUIDLinkPost(UUIDRequest):
             if this.timezone not in Timezones.CHECK_LIST:
                 this.response = ErrorCode.NOT_FOUND
 
-            elif await Helpers.tzBot.db.getUserIdByUUID(this.uuid) or this.uuid in [val[0] for val in Helpers.tzBot.linkCodes.values()]:
+            elif await this.tzBot.db.getUserIdByUUID(this.uuid) or this.uuid in [val[0] for val in Helpers.tzBot.linkCodes.values()]:
                 this.response = ErrorCode.CONFLICT
                 this.response.message = "UUID already registered"
 
             else:
                 this.code = await Helpers.generateCharSequence(6)
 
-                Helpers.tzBot.linkCodes.update({this.code: (this.uuid, this.timezone)})
-                asyncio.create_task(Helpers.tzBot.removeCode(15, this.code))
+                this.tzBot.linkCodes.update({this.code: (this.uuid, this.timezone)})
+                asyncio.create_task(this.tzBot.removeCode(15, this.code))
 
                 this.response = ErrorCode.OK
                 this.response.message = this.code
@@ -112,12 +132,16 @@ class TimezoneFromUUIDRequest(UUIDRequest):
         super().__init__(client, headers, data, tzBot, ApiPermissions.MINECRAFT_UUID)
 
     @override
+    def packetNameStringRepr(this) -> str:
+        return "TIMEZONE_FROM_UUID"
+
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()
 
         if not this.response:
-            timezone = await Helpers.tzBot.db.getTimezoneByUUID(this.uuid)
+            timezone = await this.tzBot.db.getTimezoneByUUID(this.uuid)
             if not timezone:
                 this.response = ErrorCode.NOT_FOUND
 
@@ -129,6 +153,10 @@ class TimezoneFromUUIDRequest(UUIDRequest):
 class IsLinkedRequest(UUIDRequest):
     def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         super().__init__(client, headers, data, tzBot, ApiPermissions.MINECRAFT_UUID)
+
+    @override
+    def packetNameStringRepr(this) -> str:
+        return "IS_LINKED"
 
     @override
     @autoRespond
@@ -148,21 +176,31 @@ class UserIDFromUUIDRequest(UUIDRequest):
         super().__init__(client, headers, data, tzBot, ApiPermissions.MINECRAFT_UUID, ApiPermissions.DISCORD_ID)
 
     @override
+    def packetNameStringRepr(this) -> str:
+        return "USER_ID_FROM_UUID"
+
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()
 
         if not this.response:
-            if not (userId := await Helpers.tzBot.db.getUserIdByUUID(this.uuid)):
+            if not (userId := await this.tzBot.db.getUserIdByUUID(this.uuid)):
                 this.response = ErrorCode.NOT_FOUND
             else:
                 this.response = ErrorCode.OK
                 this.response.message = userId
 
+
 class UUIDFromUserIDRequest(UserIdRequest):
     def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
-        super().__init__(client, headers, data, tzBot)
+        super().__init__(client, headers, data, tzBot, ApiPermissions.MINECRAFT_UUID, ApiPermissions.DISCORD_ID)
 
+    @override
+    def packetNameStringRepr(this) -> str:
+        return "UUID_FROM_USER_ID"
+
+    @override
     @autoRespond
     async def process(this) -> None:
         await super().process()

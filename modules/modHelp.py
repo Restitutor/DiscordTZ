@@ -10,32 +10,32 @@ from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
-async def commandAutocomplete(ctx: discord.AutocompleteContext = None) -> list[str]:
-    if not ctx:
-        return [cmd.name for cmd in Helpers.tzBot.loadedCommands]
-    else:
-        return [cmd.name for cmd in Helpers.tzBot.loadedCommands if cmd.name.startswith(ctx.value)]
-
 class Help(commands.Cog):
     helpGroup = discord.SlashCommandGroup("help", description="Shows different kinds of command help.")
 
     def __init__(this, client: TZBot) -> None:
         this.client = client
 
+    async def commandAutocomplete(this, ctx: discord.AutocompleteContext = None) -> list[str]:
+        if not ctx:
+            return [cmd.name for cmd in this.client.loadedCommands]
+        else:
+            return [cmd.name for cmd in this.client.loadedCommands if cmd.name.startswith(ctx.value)]
+
     @helpGroup.command(name="commands", description="Shows you available commands/help with a specific command.")
     @collectCommandStats
     async def commands(this, ctx: discord.ApplicationContext, commandname: discord.Option(str, "Command name to display help for. If left empty, shows a list of commands.", required=False, autocomplete=commandAutocomplete) = None) -> bool:
         if commandname is None:
             embed = discord.Embed(title="**Command List**", description="", color=discord.Color.green())
-            for cmd in Helpers.tzBot.loadedCommands:
+            for cmd in this.client.loadedCommands:
                 embed.description += f"- {cmd.prefix}{cmd.name}\n"
 
             await ctx.response.send_message(embed=embed)
             return True
 
-        if commandname in await commandAutocomplete():
-            cmd: Command = None
-            for command in Helpers.tzBot.loadedCommands:
+        if commandname in await this.commandAutocomplete():
+            cmd: Command | None = None
+            for command in this.client.loadedCommands:
                 with contextlib.suppress(IndexError):
                     if command.name == commandname or command.name == commandname.split(" ")[-1]:
                         cmd = command

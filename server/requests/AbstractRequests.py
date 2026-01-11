@@ -7,8 +7,8 @@ from geoip2 import errors  # noqa: F401
 from geoip2.models import City
 
 from server.Api import ApiKey, ApiPermissions
-from server.EventHandler import EventHandler
 from server.ServerError import ErrorCode
+from server.protocol.APIPayload import PacketFlags
 from server.protocol.Client import Client
 from server.protocol.Response import Response
 from server.protocol.TCP import TCPClient
@@ -40,7 +40,8 @@ class SimpleRequest:
     protocol: str
     tzBot: "TZBot"
 
-    commonEventHandler: EventHandler = EventHandler()
+    def packetNameStringRepr(this) -> str:
+        return "INVALID"
 
     def __init__(this, client: Client, headers: dict, data: dict, tzBot: "TZBot") -> None:
         this.client = client
@@ -50,7 +51,7 @@ class SimpleRequest:
 
         this.protocol = "TCP" if isinstance(client, TCPClient) else "UDP"
         try:
-            this.city = Helpers.tzBot.maxMindDb.city(this.client.ip.address)
+            this.city = this.tzBot.maxMindDb.city(this.client.ip.address)
         except geoip2.errors.AddressNotFoundError:
             this.city = None
 
@@ -74,7 +75,7 @@ class PartiallyEncryptedRequest(SimpleRequest):
         super().__init__(client, headers, data, tzBot)
 
     async def process(this) -> None:
-        if not this.client.flags["e"]:
+        if not this.client.flags & (PacketFlags.AESGCM | PacketFlags.CHACHAPOLY):
             if not await Helpers.isLocalSubnet(this.client.ip.address):
                 this.response = ErrorCode.BAD_REQUEST
                 this.response.message = "Bad Request, Unencrypted"
@@ -85,7 +86,7 @@ class EncryptedRequest(SimpleRequest):
         super().__init__(client, headers, data, tzBot)
 
     async def process(this) -> None:
-        if not this.client.flags["e"]:
+        if not this.client.flags & (PacketFlags.AESGCM | PacketFlags.CHACHAPOLY):
             this.response = ErrorCode.BAD_REQUEST
             this.response.message = "Bad Request, Unencrypted"
 

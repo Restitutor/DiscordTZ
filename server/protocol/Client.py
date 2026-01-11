@@ -1,30 +1,28 @@
-import struct
-
+from server.protocol.APIPayload import PacketFlags
 from server.protocol.IP import IP
 from shared.Helpers import Helpers
 
 
 class Client:
-    def __init__(this, ipAddress: tuple[str, int], aesKey: bytes, flags: dict[str, bool], server: "APIServer") -> None:
+    def __init__(this, ipAddress: tuple[str, int], aesKey: bytes, flags: PacketFlags, server: "APIServer") -> None:
         this.ip: IP = IP.fromTuple(ipAddress)
         this.aesKey = aesKey
         this.flags = flags
         this.server = server
 
     async def _applyFlags(this, data: bytes):
-        usedFlags = ""
-        if this.flags["p"]:
+        if this.flags & PacketFlags.MSGPACK:
             data = Helpers.jsonToMsgpack(data)
-            usedFlags += "p"
-        if this.flags["g"]:
+        if this.flags & PacketFlags.GUNZIP:
             data = Helpers.compressGzip(data)
-            usedFlags += "g"
-        if this.flags["e"]:
+        if this.flags & PacketFlags.CHACHAPOLY:
+            data = Helpers.ChaCha20Encrypt(data, this.aesKey)
+        elif this.flags & PacketFlags.AESGCM:
             data = Helpers.AESEncrypt(data, this.aesKey)
-            usedFlags += "e"
 
-        headerLen = 3 + len(usedFlags)
-        header = b"tz" + struct.pack(">B", headerLen) + usedFlags.encode()
+        # Pattern + headerLen + flags + contentLen
+        headerLen = 2 + 1 + 1 + 2
+        header = b"tz" + headerLen.to_bytes(1, "big", signed=False) + this.flags.to_bytes(1, "big", signed=False) + len(data).to_bytes(2, "big", signed=False)
         return header + data
 
     async def send(this, data: bytes) -> None:
