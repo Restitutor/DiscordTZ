@@ -31,10 +31,12 @@ class UDPProtocol(asyncio.DatagramProtocol):
         this.transport = transport
 
     def datagram_received(this, data: bytes, addr: tuple[str, int]) -> None:
+        client: UDPClient = UDPClient(this.transport, addr, this.server.aesKey, this.server)
         if not data.startswith(b"tz"):
+            asyncio.create_task(this.server.respondToInvalid(data, client))
             return
 
-        asyncio.create_task(this.server.processRequest(data, UDPClient(this.transport, addr, this.server.aesKey, this.server)))
+        asyncio.create_task(this.server.processRequest(data, client))
 
     def close(this):
         this.transport.close()

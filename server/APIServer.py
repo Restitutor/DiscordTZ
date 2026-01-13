@@ -70,10 +70,12 @@ class APIServer:
         this._STOP_EVENT.set()
 
     async def TCPReceived(this, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        client: TCPClient = TCPClient(reader, writer, this.aesKey, this)
         try:
             magic = await reader.readexactly(2)
             if magic != b"tz":
-                writer.close()
+                rest = magic + await reader.read(65535)
+                await this.respondToInvalid(rest, client)
                 return
 
             headerLen = int.from_bytes(await reader.readexactly(1), "big")

@@ -61,9 +61,6 @@ class SimpleRequest:
         pass
 
     async def respond(this) -> None:
-        if this.__class__.__name__ == "SimpleRequest":
-            this.response = ErrorCode.BAD_REQUEST
-
         await sendResponse(this)
 
     def __str__(this) -> str:
@@ -192,6 +189,7 @@ async def sendResponse(request: SimpleRequest) -> None:
     if request.city is not None and request.city.country.iso_code in Helpers.BLACKLISTED_COUNTRIES:
         await chinaResponse(request)
 
-    Logger.log(f"Responding with: {json.dumps(request.response.__dict__)}")
-    await request.client.send(json.dumps(request.response.__dict__).encode())
+    if request.response:
+        Logger.log(f"Responding with: {json.dumps(request.response.__dict__)}")
+        await request.client.send(json.dumps(request.response.__dict__).encode())
     await request.tzBot.API_PACKET_LOGGER.sendLogEmbed(request)

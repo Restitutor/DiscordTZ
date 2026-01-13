@@ -45,12 +45,13 @@ class ServerLogger:
             requestFile = discord.File(io.BytesIO(str(request.data).replace("'", "\"").encode("utf-8")), "RequestData.json")
             fileSendList.append(requestFile)
 
-        if len(str(request.response)) < this.MAX_DATA_EMBED_LEN:
-            embed.add_field(name="Response Data", value=f"```{json.dumps(request.response.__dict__)}```", inline=False)
-        else:
-            embed.add_field(name="Response Data", value=f"Request is included in the file below due to its size.", inline=False)
-            responseFile = discord.File(io.BytesIO(json.dumps(request.response.__dict__).encode("utf-8")), "ResponseData.json")
-            fileSendList.append(responseFile)
+        if request.response:
+            if len(str(request.response)) < this.MAX_DATA_EMBED_LEN:
+                embed.add_field(name="Response Data", value=f"```{json.dumps(request.response.__dict__)}```", inline=False)
+            else:
+                embed.add_field(name="Response Data", value=f"Request is included in the file below due to its size.", inline=False)
+                responseFile = discord.File(io.BytesIO(json.dumps(request.response.__dict__).encode("utf-8")), "ResponseData.json")
+                fileSendList.append(responseFile)
 
         lock = "🔒" if request.client.flags & PacketFlags.AESGCM else ""
         warning = "⚠️" if request.city and (request.city.country.iso_code in Helpers.BLACKLISTED_COUNTRIES) else ""
@@ -71,7 +72,7 @@ class ServerLogger:
         embed.description = description
         embed.timestamp = datetime.now()
 
-        if 200 <= request.response.code <= 300:
+        if request.response and 200 <= request.response.code <= 300:
             embed.colour = discord.Color.green()
             embed.title = f"{lock} **Success** {lock}".strip()
             await this.tzBot.successChannel.send(embed=embed, files=fileSendList)
