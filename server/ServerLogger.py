@@ -30,7 +30,7 @@ class ServerLogger:
 
         lock = "🔒" if request.client.flags & PacketFlags.AESGCM else ""
         warning = "⚠️" if request.city and (request.response.code == ErrorCode.BAD_GEOLOC.code) else ""
-        if not warning:
+        if warning:
             request.response = None
 
         if request.__class__.__name__ in {"TimeZoneFromIPRequest"}:
