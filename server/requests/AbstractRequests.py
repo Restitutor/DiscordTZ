@@ -58,7 +58,9 @@ class SimpleRequest:
 
     @autoRespond
     async def process(this) -> None:
-        pass
+        if this.city and this.city.country.iso_code in Helpers.BLACKLISTED_COUNTRIES:
+            this.response = ErrorCode.BAD_GEOLOC
+            return
 
     async def respond(this) -> None:
         await sendResponse(this)
@@ -72,10 +74,12 @@ class PartiallyEncryptedRequest(SimpleRequest):
         super().__init__(client, headers, data, tzBot)
 
     async def process(this) -> None:
-        if not this.client.flags & (PacketFlags.AESGCM | PacketFlags.CHACHAPOLY):
-            if not await Helpers.isLocalSubnet(this.client.ip.address):
-                this.response = ErrorCode.BAD_REQUEST
-                this.response.message = "Bad Request, Unencrypted"
+        super().process()
+        if not this.response:
+            if not this.client.flags & (PacketFlags.AESGCM | PacketFlags.CHACHAPOLY):
+                if not await Helpers.isLocalSubnet(this.client.ip.address):
+                    this.response = ErrorCode.BAD_REQUEST
+                    this.response.message = "Bad Request, Unencrypted"
 
 
 class EncryptedRequest(SimpleRequest):
@@ -83,9 +87,11 @@ class EncryptedRequest(SimpleRequest):
         super().__init__(client, headers, data, tzBot)
 
     async def process(this) -> None:
-        if not this.client.flags & (PacketFlags.AESGCM | PacketFlags.CHACHAPOLY):
-            this.response = ErrorCode.BAD_REQUEST
-            this.response.message = "Bad Request, Unencrypted"
+        super().process()
+        if not this.response:
+            if not this.client.flags & (PacketFlags.AESGCM | PacketFlags.CHACHAPOLY):
+                this.response = ErrorCode.BAD_REQUEST
+                this.response.message = "Bad Request, Unencrypted"
 
 
 class APIRequest(PartiallyEncryptedRequest):
@@ -186,8 +192,10 @@ async def chinaResponse(request: SimpleRequest) -> None:
 
 
 async def sendResponse(request: SimpleRequest) -> None:
-    if request.city is not None and request.city.country.iso_code in Helpers.BLACKLISTED_COUNTRIES:
-        await chinaResponse(request)
+    if request.response.code == ErrorCode.BAD_GEOLOC.code:
+        Logger.log(f"Not responding due to it being from {request.city.country.iso_code}")
+        await request.tzBot.API_PACKET_LOGGER.sendLogEmbed(request)
+        return
 
     if request.response:
         Logger.log(f"Responding with: {json.dumps(request.response.__dict__)}")

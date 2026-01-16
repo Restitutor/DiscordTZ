@@ -5,6 +5,7 @@ from typing import Final
 
 import discord
 
+from server.ServerError import ErrorCode
 from server.protocol.APIPayload import PacketFlags
 from server.requests.AbstractRequests import SimpleRequest
 from shared.Helpers import Helpers
@@ -12,11 +13,6 @@ from shared.Helpers import Helpers
 
 class ServerLogger:
     MAX_DATA_EMBED_LEN: Final[int] = 900
-    FLAGS: Final[dict[str, str]] = {
-        "e": "ENCRYPTED",
-        "g": "GZIP",
-        "p": "MSGPACK"
-    }
 
     def __init__(this, tzBot: "TZBot", loggingEnabled: bool) -> None:
         this.tzBot = tzBot
@@ -32,10 +28,15 @@ class ServerLogger:
         embed: discord.Embed = discord.Embed()
         fileSendList: list[discord.File] = []
 
+        lock = "🔒" if request.client.flags & PacketFlags.AESGCM else ""
+        warning = "⚠️" if request.city and (request.response.code == ErrorCode.BAD_GEOLOC.code) else ""
+        if not warning:
+            request.response = None
+
         if request.__class__.__name__ in {"TimeZoneFromIPRequest"}:
             request.data["ip"] = "<redacted>"
 
-        if request.__class__.__name__ in {"UserIdUUIDLinkPost"}:
+        if request.__class__.__name__ in {"UserIdUUIDLinkPost"} and request.response.code == ErrorCode.OK.code:
             request.response.message = "<redacted>"
 
         if len(str(request.data)) < this.MAX_DATA_EMBED_LEN:
@@ -53,8 +54,6 @@ class ServerLogger:
                 responseFile = discord.File(io.BytesIO(json.dumps(request.response.__dict__).encode("utf-8")), "ResponseData.json")
                 fileSendList.append(responseFile)
 
-        lock = "🔒" if request.client.flags & PacketFlags.AESGCM else ""
-        warning = "⚠️" if request.city and (request.city.country.iso_code in Helpers.BLACKLISTED_COUNTRIES) else ""
 
         packetName: str = request.packetNameStringRepr()
         protocol: str = request.protocol
