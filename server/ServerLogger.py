@@ -29,14 +29,14 @@ class ServerLogger:
         fileSendList: list[discord.File] = []
 
         lock = "🔒" if request.client.flags & PacketFlags.AESGCM else ""
-        warning = "⚠️" if request.city and (request.response.code == ErrorCode.BAD_GEOLOC.code) else ""
+        warning = "⚠️" if request.city and (request.response and request.response.code == ErrorCode.BAD_GEOLOC.code) else ""
         if warning:
             request.response = None
 
-        if request.__class__.__name__ in {"TimeZoneFromIPRequest"}:
+        if not warning and request.__class__.__name__ in {"TimeZoneFromIPRequest"}:
             request.data["ip"] = "<redacted>"
 
-        if request.__class__.__name__ in {"UserIdUUIDLinkPost"} and request.response.code == ErrorCode.OK.code:
+        if not warning and request.__class__.__name__ in {"UserIdUUIDLinkPost"} and request.response.code == ErrorCode.OK.code:
             request.response.message = "<redacted>"
 
         if len(str(request.data)) < this.MAX_DATA_EMBED_LEN:

@@ -192,7 +192,7 @@ async def chinaResponse(request: SimpleRequest) -> None:
 
 
 async def sendResponse(request: SimpleRequest) -> None:
-    if request.response.code == ErrorCode.BAD_GEOLOC.code:
+    if request.response and request.response.code == ErrorCode.BAD_GEOLOC.code:
         Logger.log(f"Not responding due to it being from {request.city.country.iso_code}")
         await request.tzBot.API_PACKET_LOGGER.sendLogEmbed(request)
         return
