@@ -11,18 +11,18 @@ class MaxmindConfig:
     token: str
 
 
-from typing import TypedDict
+from typing import TypedDict, ReadOnly
 
 type MDBParams = MariaDBConnectionParams
 
 
 class MariaDBConnectionParams(TypedDict):
-    host: str
-    user: str
-    password: str
-    db: str
-    port: int
-    autocommit: bool
+    host: ReadOnly[str]
+    user: ReadOnly[str]
+    password: ReadOnly[str]
+    db: ReadOnly[str]
+    port: ReadOnly[int]
+    autocommit: ReadOnly[bool]
 
 
 @dataclass_json

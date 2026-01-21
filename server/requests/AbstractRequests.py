@@ -15,7 +15,7 @@ from shared.Helpers import Helpers
 from shell.Logger import Logger
 
 
-from typing import ParamSpec, TypeVar, Callable, Coroutine, Any, TypedDict, NotRequired, override, TYPE_CHECKING
+from typing import ParamSpec, TypeVar, Callable, Coroutine, Any, TypedDict, NotRequired, override, TYPE_CHECKING, ReadOnly
 
 if TYPE_CHECKING:
     from modules.TZBot import TZBot
@@ -26,7 +26,7 @@ R = TypeVar("R")
 # 1. Header Definition
 class RequestHeaders(TypedDict):
     # 'NotRequired' signals keys that might be missing in raw JSON
-    apiKey: NotRequired[str]
+    apiKey: NotRequired[ReadOnly[str]]
 
 # 2. Payload Definitions
 class BaseData(TypedDict):
