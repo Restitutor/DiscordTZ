@@ -23,12 +23,7 @@ class Database:
         try:
             this.mdbPool = await aiomysql.create_pool(
                 loop=asyncio.get_event_loop(),
-                host=this.mdbConfig.host,
-                user=this.mdbConfig.user,
-                password=this.mdbConfig.password,
-                db=this.mdbConfig.database,
-                port=this.mdbConfig.port,
-                autocommit=True,
+                **this.mdbConfig.to_connection_params(),
             )
         except Exception:
             Logger.error("MDB is not available!")

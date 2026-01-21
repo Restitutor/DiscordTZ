@@ -11,6 +11,20 @@ class MaxmindConfig:
     token: str
 
 
+from typing import TypedDict
+
+type MDBParams = MariaDBConnectionParams
+
+
+class MariaDBConnectionParams(TypedDict):
+    host: str
+    user: str
+    password: str
+    db: str
+    port: int
+    autocommit: bool
+
+
 @dataclass_json
 @dataclass
 class MariaDBConfig:
@@ -21,14 +35,14 @@ class MariaDBConfig:
     port: int
     autocommit: bool
 
-    def __dict__(this) -> dict:
+    def to_connection_params(self) -> MDBParams:
         return {
-            "host": this.host,
-            "user": this.user,
-            "password": this.password,
-            "db": this.database,
-            "port": this.port,
-            "autocommit": this.autocommit,
+            "db": self.database,
+            "host": self.host,
+            "user": self.user,
+            "password": self.password,
+            "port": self.port,
+            "autocommit": self.autocommit,
         }
 
 
